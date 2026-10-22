@@ -1,0 +1,50 @@
+[0.007s] Invoking command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake /home/ragnarhritz/ros2_ws_latest/src/my_robot_description -DCMAKE_INSTALL_PREFIX=/home/ragnarhritz/ros2_ws_latest/install/my_robot_description
+[0.058s] -- The C compiler identification is GNU 11.4.0
+[0.102s] -- The CXX compiler identification is GNU 11.4.0
+[0.107s] -- Detecting C compiler ABI info
+[0.167s] -- Detecting C compiler ABI info - done
+[0.174s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.174s] -- Detecting C compile features
+[0.174s] -- Detecting C compile features - done
+[0.176s] -- Detecting CXX compiler ABI info
+[0.238s] -- Detecting CXX compiler ABI info - done
+[0.242s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.243s] -- Detecting CXX compile features
+[0.243s] -- Detecting CXX compile features - done
+[0.245s] -- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.358s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.463s] -- Configuring done
+[0.464s] -- Generating done
+[0.465s] -- Build files have been written to: /home/ragnarhritz/ros2_ws_latest/build/my_robot_description
+[0.468s] Invoked command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake /home/ragnarhritz/ros2_ws_latest/src/my_robot_description -DCMAKE_INSTALL_PREFIX=/home/ragnarhritz/ros2_ws_latest/install/my_robot_description
+[0.470s] Invoking command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake --build /home/ragnarhritz/ros2_ws_latest/build/my_robot_description -- -j12 -l12
+[0.500s] Invoked command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake --build /home/ragnarhritz/ros2_ws_latest/build/my_robot_description -- -j12 -l12
+[0.509s] Invoking command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake --install /home/ragnarhritz/ros2_ws_latest/build/my_robot_description
+[0.515s] -- Install configuration: ""
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf/mobile_base.xacro
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf/mobile_base_gazebo.xacro
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf/common_properties.xacro
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf/camera.xacro
+[0.515s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//urdf/my_robot.urdf.xacro
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//launch
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//launch/display.launch.py
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//launch/display.launch.xml
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//rviz
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description//rviz/urdf_config.rviz
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/ament_index/resource_index/package_run_dependencies/my_robot_description
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/ament_index/resource_index/parent_prefix_path/my_robot_description
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/environment/ament_prefix_path.sh
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/environment/ament_prefix_path.dsv
+[0.516s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/environment/path.sh
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/environment/path.dsv
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/local_setup.bash
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/local_setup.sh
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/local_setup.zsh
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/local_setup.dsv
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/package.dsv
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/ament_index/resource_index/packages/my_robot_description
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/cmake/my_robot_descriptionConfig.cmake
+[0.517s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/cmake/my_robot_descriptionConfig-version.cmake
+[0.518s] -- Installing: /home/ragnarhritz/ros2_ws_latest/install/my_robot_description/share/my_robot_description/package.xml
+[0.519s] Invoked command in '/home/ragnarhritz/ros2_ws_latest/build/my_robot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/ragnarhritz/ros_practice/install/turtle_killer:/opt/ros/humble /usr/bin/cmake --install /home/ragnarhritz/ros2_ws_latest/build/my_robot_description

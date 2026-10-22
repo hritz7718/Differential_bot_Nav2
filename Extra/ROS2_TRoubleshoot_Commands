@@ -1,0 +1,238 @@
+Here is a practical ROS 2 troubleshooting command cheat sheet for this project.
+
+**Build And Source**
+```bash
+cd ~/ros2_ws_latest
+colcon build
+source install/setup.bash
+```
+
+Build only these packages:
+```bash
+colcon build --packages-select my_robot_description my_robot_bringup
+source install/setup.bash
+```
+
+**Run The Robot**
+Display URDF in RViz:
+```bash
+ros2 launch my_robot_description display.launch.xml
+```
+
+Run Gazebo simulation:
+```bash
+ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
+```
+
+Drive the robot with keyboard:
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
+
+If velocity topic is different:
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cmd_vel
+```
+
+**Package Checks**
+List packages:
+```bash
+ros2 pkg list
+```
+
+Find your packages:
+```bash
+ros2 pkg list | grep my_robot
+```
+
+Show package path:
+```bash
+ros2 pkg prefix my_robot_description
+ros2 pkg prefix my_robot_bringup
+```
+
+List package executables:
+```bash
+ros2 pkg executables my_robot_description
+ros2 pkg executables my_robot_bringup
+```
+
+**Nodes**
+List running nodes:
+```bash
+ros2 node list
+```
+
+Inspect a node:
+```bash
+ros2 node info /robot_state_publisher
+```
+
+Common nodes to check:
+```bash
+ros2 node info /gazebo
+ros2 node info /robot_state_publisher
+```
+
+**Topics**
+List topics:
+```bash
+ros2 topic list
+```
+
+List topics with message types:
+```bash
+ros2 topic list -t
+```
+
+Inspect a topic:
+```bash
+ros2 topic info /cmd_vel
+ros2 topic info /odom
+ros2 topic info /tf
+ros2 topic info /camera/image_raw
+```
+
+Echo topic data:
+```bash
+ros2 topic echo /odom
+ros2 topic echo /cmd_vel
+ros2 topic echo /camera/image_raw
+ros2 topic echo /tf
+```
+
+Check publish rate:
+```bash
+ros2 topic hz /odom
+ros2 topic hz /tf
+ros2 topic hz /camera/image_raw
+```
+
+Publish velocity manually:
+```bash
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
+```
+
+Turn in place:
+```bash
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.5}}"
+```
+
+Stop robot:
+```bash
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}"
+```
+
+**Services**
+List services:
+```bash
+ros2 service list
+```
+
+List services with types:
+```bash
+ros2 service list -t
+```
+
+Show service type:
+```bash
+ros2 service type /spawn_entity
+```
+
+Call empty service:
+```bash
+ros2 service call /reset_simulation std_srvs/srv/Empty
+ros2 service call /reset_world std_srvs/srv/Empty
+```
+
+Pause/unpause Gazebo:
+```bash
+ros2 service call /pause_physics std_srvs/srv/Empty
+ros2 service call /unpause_physics std_srvs/srv/Empty
+```
+
+**TF And Frames**
+Show TF tree:
+```bash
+ros2 run tf2_tools view_frames
+```
+
+Echo transform:
+```bash
+ros2 run tf2_ros tf2_echo odom base_footprint
+ros2 run tf2_ros tf2_echo base_link camera_link
+ros2 run tf2_ros tf2_echo camera_link camera_link_optical
+```
+
+Check robot state:
+```bash
+ros2 topic echo /robot_description
+ros2 topic echo /joint_states
+```
+
+**URDF/Xacro Checks**
+Expand xacro:
+```bash
+xacro src/my_robot_description/urdf/my_robot.urdf.xacro
+```
+
+Save expanded URDF:
+```bash
+xacro src/my_robot_description/urdf/my_robot.urdf.xacro > /tmp/my_robot.urdf
+```
+
+Check URDF:
+```bash
+check_urdf /tmp/my_robot.urdf
+```
+
+**Gazebo Checks**
+See spawned model/entity:
+```bash
+ros2 topic list | grep gazebo
+ros2 service list | grep gazebo
+```
+
+If robot does not move, check:
+```bash
+ros2 topic info /cmd_vel
+ros2 topic echo /cmd_vel
+ros2 topic echo /odom
+ros2 node list
+```
+
+**Camera Checks**
+List image topics:
+```bash
+ros2 topic list | grep camera
+ros2 topic list | grep image
+```
+
+Echo camera info:
+```bash
+ros2 topic echo /camera/camera_info
+```
+
+View image:
+```bash
+ros2 run rqt_image_view rqt_image_view
+```
+
+**Useful GUI Tools**
+```bash
+rqt
+rqt_graph
+rviz2
+```
+
+For this project, your main launch command is:
+
+```bash
+ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
+```
+
+Then in another terminal:
+
+```bash
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
+```
