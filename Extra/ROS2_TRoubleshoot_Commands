@@ -2,7 +2,7 @@ Here is a practical ROS 2 troubleshooting command cheat sheet for this project.
 
 **Build And Source**
 ```bash
-cd ~/ros2_ws_latest
+cd ~/ros2_Nav2_diffbot
 colcon build
 source install/setup.bash
 ```
@@ -236,3 +236,4 @@ Then in another terminal:
 ```bash
 ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
 ```
+
