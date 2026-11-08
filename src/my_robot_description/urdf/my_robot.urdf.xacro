@@ -1,11 +1,21 @@
 <?xml version="1.0"?>
 <robot name="my_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+    <xacro:arg name="use_ros2_control" default="false" />
+    <xacro:arg name="serial_port" default="/dev/serial/by-id/CHANGE_ME_ARDUINO_MEGA" />
+    <xacro:arg name="baud_rate" default="115200" />
+
     <xacro:include filename="common_properties.xacro" />
     <xacro:include filename="mobile_base.xacro" />
     <xacro:include filename="mobile_base_gazebo.xacro" />
+    <xacro:include filename="ros2_control.xacro" />
 
     <xacro:include filename="camera.xacro" />
     <xacro:include filename="lidar.xacro" />
+
+    <xacro:diffbot_ros2_control
+        enabled="$(arg use_ros2_control)"
+        serial_port="$(arg serial_port)"
+        baud_rate="$(arg baud_rate)" />
 
 </robot>

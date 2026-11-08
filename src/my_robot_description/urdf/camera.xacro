@@ -24,7 +24,9 @@
     <joint name="base_camera_joint" type="fixed">
         <parent link="base_link" />
         <child link="camera_link" />
-        <origin xyz="${(base_length + camera_length) / 2.0} 0 ${base_height / 2.0}" rpy="0 0 0" />
+        <origin xyz="${axle_to_chassis_front + camera_length / 2.0} 0
+                     ${ground_to_chassis_top + camera_height / 2.0 - base_link_height}"
+                rpy="0 0 0" />
     </joint>
 
     <link name="camera_link_optical">

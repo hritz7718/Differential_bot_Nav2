@@ -27,8 +27,8 @@
             <left_joint>base_left_wheel_joint</left_joint>
             <right_joint>base_right_wheel_joint</right_joint>
             <!-- kinematics -->
-            <wheel_separation>0.45</wheel_separation>
-            <wheel_diameter>0.2</wheel_diameter>
+            <wheel_separation>${wheel_separation}</wheel_separation>
+            <wheel_diameter>${2.0 * wheel_radius}</wheel_diameter>
             <!-- output -->
             <publish_odom>true</publish_odom>
             <publish_odom_tf>true</publish_odom_tf>

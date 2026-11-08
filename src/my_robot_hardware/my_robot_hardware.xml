@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<library path="my_robot_hardware">
+  <class name="my_robot_hardware/DiffBotSystem"
+    type="my_robot_hardware::DiffBotSystem"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>Serial ros2_control interface for an Arduino Mega differential drive base.</description>
+  </class>
+</library>

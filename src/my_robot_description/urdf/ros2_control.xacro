@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="diffbot_ros2_control" params="enabled serial_port baud_rate">
+        <xacro:if value="${enabled}">
+            <ros2_control name="DiffBotSystem" type="system">
+                <hardware>
+                    <plugin>my_robot_hardware/DiffBotSystem</plugin>
+                    <param name="serial_port">${serial_port}</param>
+                    <param name="baud_rate">${baud_rate}</param>
+                    <param name="encoder_counts_per_revolution">450</param>
+                    <param name="serial_timeout_ms">500</param>
+                    <param name="boot_wait_ms">2000</param>
+                </hardware>
+
+                <joint name="base_left_wheel_joint">
+                    <command_interface name="velocity" />
+                    <state_interface name="position" />
+                    <state_interface name="velocity" />
+                </joint>
+
+                <joint name="base_right_wheel_joint">
+                    <command_interface name="velocity" />
+                    <state_interface name="position" />
+                    <state_interface name="velocity" />
+                </joint>
+            </ros2_control>
+        </xacro:if>
+    </xacro:macro>
+
+</robot>
