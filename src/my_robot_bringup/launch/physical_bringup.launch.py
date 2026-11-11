@@ -23,6 +23,9 @@ def generate_launch_description():
     serial_port = LaunchConfiguration('serial_port')
     baud_rate = LaunchConfiguration('baud_rate')
     use_rviz = LaunchConfiguration('use_rviz')
+    use_lidar = LaunchConfiguration('use_lidar')
+    lidar_serial_port = LaunchConfiguration('lidar_serial_port')
+    lidar_baud_rate = LaunchConfiguration('lidar_baud_rate')
 
     robot_description = ParameterValue(
         Command([
@@ -46,6 +49,18 @@ def generate_launch_description():
             'use_rviz',
             default_value='false',
             description='Start RViz'),
+        DeclareLaunchArgument(
+            'use_lidar',
+            default_value='true',
+            description='Start the physical RPLIDAR A1 driver'),
+        DeclareLaunchArgument(
+            'lidar_serial_port',
+            default_value='/dev/ttyUSB0',
+            description='RPLIDAR A1 serial device, separate from the Arduino'),
+        DeclareLaunchArgument(
+            'lidar_baud_rate',
+            default_value='115200',
+            description='RPLIDAR A1 serial baud rate'),
 
         Node(
             package='robot_state_publisher',
@@ -77,6 +92,22 @@ def generate_launch_description():
         Node(
             package='my_robot_bringup',
             executable='twist_stamper.py',
+            output='screen'),
+
+        Node(
+            package='sllidar_ros2',
+            executable='sllidar_node',
+            name='sllidar_node',
+            condition=IfCondition(use_lidar),
+            parameters=[{
+                'channel_type': 'serial',
+                'serial_port': lidar_serial_port,
+                'serial_baudrate': ParameterValue(lidar_baud_rate, value_type=int),
+                'frame_id': 'lidar_link',
+                'inverted': False,
+                'angle_compensate': True,
+                'use_sim_time': False,
+            }],
             output='screen'),
 
         Node(

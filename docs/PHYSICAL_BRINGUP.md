@@ -102,6 +102,64 @@ ros2 launch my_robot_bringup physical_bringup.launch.py \
   serial_port:=/dev/serial/by-id/YOUR_ARDUINO_MEGA
 ```
 
+## RPLIDAR A1
+
+The physical launch starts Slamtec's `sllidar_ros2` driver by default. The
+LiDAR serial port is independent of the Arduino port. On the Raspberry Pi,
+install the driver from the official repository if it is not already available:
+
+```bash
+cd ~/ros2_Nav2_diffbot
+git clone https://github.com/Slamtec/sllidar_ros2.git src/sllidar_ros2
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-up-to my_robot_bringup sllidar_ros2
+source install/setup.bash
+ros2 pkg executables sllidar_ros2
+ls -l /dev/serial/by-id/
+```
+
+If the driver is already installed, do not clone a second copy. The user must
+have read/write access to both serial devices; membership in the `dialout`
+group usually requires logging out and back in. Do not use `chmod 777` on the
+device. Identify the RPLIDAR USB adapter separately from the Arduino, then pass
+its stable path:
+
+```bash
+ros2 launch my_robot_bringup physical_bringup.launch.py \
+  serial_port:=/dev/serial/by-id/YOUR_ARDUINO_MEGA \
+  lidar_serial_port:=/dev/serial/by-id/YOUR_RPLIDAR
+```
+
+The defaults are `/dev/ttyUSB0` and `115200` baud for the A1; both can be
+overridden using `lidar_serial_port` and `lidar_baud_rate`. For a base-only
+test, pass `use_lidar:=false`.
+
+With the launch running, check on the Pi and the RViz computer:
+
+```bash
+ros2 node list | grep sllidar
+ros2 topic info /scan -v
+ros2 topic hz /scan --qos-reliability best_effort
+ros2 topic echo --once /scan --qos-reliability best_effort
+ros2 run tf2_ros tf2_echo base_link lidar_link
+```
+
+The scan header should use `lidar_link`. In RViz add a LaserScan display for
+`/scan`, select a connected fixed frame such as `odom`, and use a compatible
+reliability setting (Best Effort is compatible with either publisher policy).
+The URDF provides the fixed `base_link` to `lidar_link` transform; do not
+publish a second transform for it. Its position and zero rotation are model
+assumptions: measure the actual sensor location and yaw, and update the joint
+in `src/my_robot_description/urdf/lidar.xacro` if needed. Synchronize the Pi
+and laptop clocks when using real time.
+
+If `/scan` is absent on the Pi, inspect the `sllidar_node` output, check that
+the port exists and is readable, and check that no other process owns it with
+`fuser -v /dev/ttyUSB0` (substitute the actual device). A spinning LiDAR alone
+does not prove serial data works. If it appears on the Pi but not the laptop,
+check ROS domain, DDS discovery, network, and RViz QoS. Investigate USB power
+or over-current errors before reconnecting hardware.
+
 ## Raised-wheel test
 
 In a second sourced terminal:
@@ -137,7 +195,7 @@ and dividing the tick change by ten. Replace `450` in both the firmware and
 3. Tune feed-forward and PID at several wheel speeds.
 4. Drive a measured straight distance and tune wheel-radius multipliers.
 5. Rotate through several full turns and tune wheel-separation multiplier.
-6. Add the real IMU and LiDAR drivers before SLAM or autonomous navigation.
+6. Verify the real LiDAR driver and add the IMU driver before SLAM or navigation.
 
 The physical robot should not run SLAM or Nav2 from simulated LiDAR data. A
 simulated LiDAR is useful only in Gazebo; the real robot needs a real range
