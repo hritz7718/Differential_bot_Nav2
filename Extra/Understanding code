@@ -1,0 +1,686 @@
+1. Firmware Code
+
+I've reviewed your complete Arduino firmware. We'll use this as the **reference firmware for your physical DiffBot**, and I'll explain it in the context of your ROS 2 Control and Nav2 architecture.
+
+I've also saved the original code and explanation in your **File Library → Robotics → DiffBot → Firmware** for future reference.
+
+**Saved files:**
+- diffbot_firmware_reference.ino[Original Arduino firmware (.ino)](sandbox:/mnt/data/diffbot_firmware_reference/diffbot_firmware_reference.ino)
+- :chatgpt-content-reference{index="1"}[Detailed firmware explanation (.md)](sandbox:/mnt/data/diffbot_firmware_reference/firmware_explanation.md)
+
+Let's understand how it works before changing anything.
+
+# 1. What does this firmware actually do?
+
+Your Raspberry Pi 5 runs the high-level robotics software, while the Arduino Mega handles the low-level motor control.
+
+### Complete control architecture
+
+```text
+                  RASPBERRY PI 5
+                  ──────────────
+
+                  Nav2 / Teleop
+                        │
+                        ▼
+                     /cmd_vel
+                        │
+                        ▼
+               diff_drive_controller
+                        │
+                        ▼
+                  ros2_control
+                        │
+                        ▼
+               DiffBotSystem Plugin
+                        │
+                        │ USB Serial
+                        ▼
+                  ARDUINO MEGA
+                  ────────────
+
+                  processCommand()
+                        │
+                        ▼
+              Wheel Speed Targets
+                        │
+                        ▼
+                  updateControl()
+                        │
+              ┌─────────┴─────────┐
+              ▼                   ▼
+        Encoder Speed        Target Speed
+              │                   │
+              └─────────┬─────────┘
+                        ▼
+                    pidOutput()
+                        │
+                        ▼
+                    setMotor()
+                        │
+                        ▼
+                    L293D Driver
+                        │
+                        ▼
+                     DC Motors
+                        │
+                        ▼
+                     Encoders
+                        │
+                        ▼
+                  sendTelemetry()
+                        │
+                        ▼
+                  Raspberry Pi
+                        │
+                        ▼
+                Odometry / Nav2
+```
+
+**The most important concept:** Arduino doesn't know where the robot should go. It only knows how fast each wheel should rotate.
+
+Nav2 decides the robot's movement. Arduino executes it.
+
+---
+
+# 2. Understanding the code by sections
+
+Your firmware has five main functional sections.
+
+| Section | Responsibility |
+|---|---|
+| Hardware configuration | Define motor, encoder and safety pins |
+| Serial communication | Receive commands and transmit feedback |
+| Encoder measurement | Determine wheel rotation and speed |
+| Motor control | Calculate PWM using feedback |
+| Main execution | Schedule control and communication |
+
+Let's examine each.
+
+## Section A — Hardware configuration
+
+```cpp
+constexpr uint8_t kRightPwmPin = 5;
+constexpr uint8_t kRightIn1Pin = 7;
+constexpr uint8_t kRightIn2Pin = 8;
+```
+
+These three pins control the right motor through the L293D.
+
+- **PWM (5):** Controls the effective voltage applied to the motor through duty-cycle modulation.
+- **IN1 (7):** Motor direction input.
+- **IN2 (8):** Motor direction input.
+
+The left motor uses pins 6, 9 and 10.
+
+### Why `constexpr`?
+
+```cpp
+constexpr uint8_t kRightPwmPin = 5;
+```
+
+`constexpr` declares a compile-time constant.
+
+`uint8_t` means an unsigned 8-bit integer, suitable for pin numbers.
+
+Unlike a normal variable, this value cannot change during execution.
+
+### Motor and encoder polarity
+
+```cpp
+constexpr int8_t kRightMotorSign = -1;
+constexpr int8_t kLeftMotorSign = 1;
+
+constexpr int8_t kRightEncoderSign = -1;
+constexpr int8_t kLeftEncoderSign = 1;
+```
+
+These are important because the motors are mounted on opposite sides of the robot.
+
+For example, applying the same electrical rotation direction to two mirrored motors might make one wheel move forward and the other backward.
+
+The motor signs correct physical rotation direction.
+
+The encoder signs independently correct measured rotation direction.
+
+**Our goal:** When the robot moves forward, both measured wheel velocities should be positive.
+
+---
+
+# 3. Encoder measurement
+
+This is one of the most important sections for autonomous navigation.
+
+### Encoder configuration
+
+```cpp
+constexpr long kEncoderCountsPerRevolution = 450;
+
+constexpr float kRadiansPerCount =
+    2.0F * PI / kEncoderCountsPerRevolution;
+```
+
+You currently assume that one complete wheel revolution produces **450 encoder counts**.
+
+One revolution corresponds to \(2\pi\) radians.
+
+Therefore:
+
+\[
+\theta_{\text{per count}}=\frac{2\pi}{450}
+\]
+
+\[
+\boxed{\theta_{\text{per count}}=0.01396\text{ rad}}
+\]
+
+Each encoder count represents approximately 0.8° of wheel rotation.
+
+### Function: `leftEncoderInterrupt()`
+
+```cpp
+void leftEncoderInterrupt()
+{
+  const int8_t direction =
+    digitalRead(kLeftEncoderAPin) ==
+    digitalRead(kLeftEncoderBPin) ? 1 : -1;
+
+  left_ticks += kLeftEncoderSign * direction;
+}
+```
+
+**What happens?**
+
+Your motor encoder has two channels: A and B.
+
+They generate digital pulses with a phase difference.
+
+Whenever channel A changes state, the Arduino executes this interrupt function.
+
+The function reads both channels to determine rotation direction.
+
+Then it updates the encoder counter.
+
+For example:
+
+| Wheel movement | Encoder count |
+|---|---:|
+| Initial | 0 |
+| Forward rotation | +100 |
+| Further forward rotation | +200 |
+| Reverse rotation | +150 |
+
+The counter represents cumulative angular displacement.
+
+**Important:** Your firmware counts both rising and falling edges of channel A. This is called **2× quadrature decoding**.
+
+It is not 4× decoding.
+
+Therefore, we must verify that the assumed 450 counts correspond to this exact counting method.
+
+---
+
+# 4. Calculating actual wheel speed
+
+### Function: `updateControl()`
+
+This is the central control function.
+
+```cpp
+left_measured_rad_s =
+    (current_left_ticks - previous_left_ticks)
+    * kRadiansPerCount / dt;
+```
+
+It calculates angular velocity from encoder counts.
+
+The mathematical relationship is:
+
+\[
+\boxed{\omega=\frac{\Delta N \times 2\pi}{N_{\text{rev}}\times\Delta t}}
+\]
+
+Where:
+
+- \(\omega\): Wheel angular velocity in rad/s
+- \(\Delta N\): Encoder counts accumulated during the interval
+- \(N_{\text{rev}}\): Counts per wheel revolution
+- \(\Delta t\): Time interval in seconds
+
+### Example
+
+Suppose your encoder detects 4 counts in 10 milliseconds.
+
+\[
+\omega=\frac{4\times 2\pi}{450\times0.01}
+\]
+
+\[
+\boxed{\omega=5.59\text{ rad/s}}
+\]
+
+The Arduino now knows the actual wheel speed.
+
+### Important observation
+
+At 450 counts/revolution and 100 Hz, **one encoder count corresponds to approximately 1.40 rad/s**.
+
+That is a relatively coarse instantaneous speed measurement.
+
+Consequently, the measured speed may fluctuate considerably between control cycles, especially at low speeds.
+
+We may eventually need to average encoder measurements over a longer interval or apply a suitable filter.
+
+---
+
+# 5. Motor speed control — `pidOutput()`
+
+This is probably the most important function to understand.
+
+```cpp
+int pidOutput(
+    float target,
+    float measured,
+    float &integral,
+    float dt)
+```
+
+### Function arguments
+
+| Argument | Meaning |
+|---|---|
+| `target` | Desired wheel angular velocity |
+| `measured` | Actual wheel angular velocity |
+| `integral` | Accumulated velocity error |
+| `dt` | Time elapsed since previous update |
+
+Notice the `&` in `float &integral`.
+
+This passes the integral variable **by reference**, allowing the function to update its value directly.
+
+### Step 1 — Calculate error
+
+```cpp
+const float error = target - measured;
+```
+
+Suppose:
+
+Target = 5 rad/s
+
+Measured = 3 rad/s
+
+Then:
+
+\[
+e=5-3=2\text{ rad/s}
+\]
+
+The wheel is rotating too slowly.
+
+The controller should increase PWM.
+
+### Step 2 — Integral term
+
+```cpp
+integral = constrain(
+    integral + error * dt,
+    -kIntegralLimit,
+    kIntegralLimit
+);
+```
+
+The integral accumulates errors over time.
+
+Why is this useful?
+
+Imagine the motor continuously runs slightly slower than requested because of friction.
+
+A proportional controller alone might leave a persistent speed error.
+
+The integral term gradually increases the output until that error is reduced.
+
+`constrain()` prevents the integral from growing beyond the configured limits.
+
+### Step 3 — Calculate output
+
+```cpp
+const float output =
+    kFeedForward * target +
+    kProportional * error +
+    kIntegral * integral;
+```
+
+Your controller implements:
+
+\[
+\boxed{u=K_{ff}\omega_{\text{target}}+K_pe+K_i\int e\,dt}
+\]
+
+There are three contributions.
+
+| Term | Function |
+|---|---|
+| Feed-forward | Estimates the PWM required for the requested speed |
+| Proportional | Corrects the current velocity error |
+| Integral | Corrects persistent velocity errors |
+
+**Technical distinction:** Despite the function name `pidOutput()`, this is actually a **PI controller with feed-forward**.
+
+There is no derivative term.
+
+That is not necessarily a problem. PI control is commonly sufficient for wheel velocity control.
+
+---
+
+# 6. Motor actuation — `setMotor()`
+
+```cpp
+void setMotor(
+    uint8_t pwm_pin,
+    uint8_t in1_pin,
+    uint8_t in2_pin,
+    int8_t motor_sign,
+    int pwm)
+```
+
+This function converts the controller output into electrical signals for the L293D.
+
+### Direction control
+
+```cpp
+if (signed_pwm > 0) {
+    digitalWrite(in1_pin, HIGH);
+    digitalWrite(in2_pin, LOW);
+}
+```
+
+Positive PWM selects one rotation direction.
+
+Negative PWM selects the opposite direction.
+
+Zero PWM disables motor drive.
+
+### Speed control
+
+```cpp
+analogWrite(pwm_pin, abs(signed_pwm));
+```
+
+Arduino PWM values range from 0 to 255.
+
+Your code currently limits the magnitude to 200.
+
+For example:
+
+\[
+\text{Duty cycle}=\frac{200}{255}\times100
+\]
+
+\[
+\boxed{78.4\%}
+\]
+
+At maximum allowed PWM, the enable signal has approximately a 78.4% duty cycle.
+
+**Important:** Limiting PWM does not directly limit motor current. The L293D can still experience excessive current during startup or a stalled motor.
+
+---
+
+# 7. Communication with Raspberry Pi
+
+Your firmware communicates using USB serial at:
+
+```cpp
+Serial.begin(115200);
+```
+
+The baud rate is 115200 bits/s.
+
+There are two communication directions.
+
+### Raspberry Pi → Arduino
+
+The command format is:
+
+```text
+C,sequence,left_speed,right_speed*CRC
+```
+
+For example, the payload:
+
+```text
+C,1,3000,3000
+```
+
+requests:
+
+- Left wheel = 3 rad/s
+- Right wheel = 3 rad/s
+
+The speeds are transmitted as integers in **milliradians per second**.
+
+The actual transmitted line must also contain a correctly calculated CRC and newline.
+
+### Function: `processCommand()`
+
+This function:
+
+1. Extracts the CRC.
+2. Verifies message integrity.
+3. Identifies the command type.
+4. Extracts left and right velocity targets.
+5. Converts milliradians/s to rad/s.
+6. Updates the last valid command timestamp.
+
+For example:
+
+```cpp
+left_target_rad_s =
+    strtol(left_value, nullptr, 10) / 1000.0F;
+```
+
+A received value of `3000` becomes `3.0 rad/s`.
+
+### Arduino → Raspberry Pi
+
+The telemetry format is:
+
+```text
+S,sequence,left_ticks,right_ticks,left_speed,right_speed,flags*CRC
+```
+
+The Raspberry Pi receives encoder position and wheel velocity information.
+
+The custom `ros2_control` hardware interface then converts this into wheel joint states.
+
+**Arduino itself does not publish `/odom`.** Your ROS 2 differential-drive controller handles odometry.
+
+---
+
+# 8. Understanding CRC-16
+
+### Function: `crc16Ccitt()`
+
+CRC means **Cyclic Redundancy Check**.
+
+Its purpose is to detect corrupted serial messages.
+
+Suppose the Raspberry Pi sends:
+
+```text
+C,1,3000,3000
+```
+
+But electrical interference changes one digit:
+
+```text
+C,1,8000,3000
+```
+
+Without validation, the Arduino could interpret a different speed command.
+
+With CRC, the received message will generally fail validation and be rejected.
+
+Your implementation uses:
+
+- 16-bit CRC
+- Polynomial `0x1021`
+- Initial value `0xFFFF`
+
+The Raspberry Pi must use the same algorithm.
+
+CRC detects transmission errors; it does not authenticate commands or prevent replay of previously valid messages.
+
+---
+
+# 9. Timing and safety
+
+Your code has three important timing parameters.
+
+| Parameter | Value | Purpose |
+|---|---:|---|
+| `kControlPeriodUs` | 10,000 µs | Motor control every 10 ms |
+| `kTelemetryPeriodMs` | 20 ms | Encoder telemetry every 20 ms |
+| `kCommandTimeoutMs` | 250 ms | Stop driving if commands are missing |
+
+### Function: `loop()`
+
+```cpp
+void loop()
+{
+  readSerial();
+
+  const unsigned long now_us = micros();
+
+  if (now_us - last_control_us >= kControlPeriodUs) {
+    updateControl(now_us);
+  }
+
+  const unsigned long now_ms = millis();
+
+  if (now_ms - last_telemetry_ms >= kTelemetryPeriodMs) {
+    last_telemetry_ms = now_ms;
+    sendTelemetry();
+  }
+}
+```
+
+Unlike a program that uses `delay()`, this loop continuously checks elapsed time.
+
+That allows serial communication, motor control and telemetry to operate without intentionally blocking one another.
+
+### Watchdog behavior
+
+Suppose the Raspberry Pi loses communication.
+
+After 250 ms without a valid command:
+
+```cpp
+left_target_rad_s = 0.0F;
+right_target_rad_s = 0.0F;
+```
+
+The PI function then returns zero PWM.
+
+This removes motor drive, but it does **not** actively brake the wheels.
+
+Also note:
+
+```cpp
+constexpr bool kUseEstop = false;
+```
+
+Your physical emergency-stop input is currently disabled in firmware. A software watchdog should not replace a hardware motor-power cutoff.
+
+---
+
+# 10. Complete function reference
+
+This table is worth keeping as a quick reference.
+
+| Function | Main responsibility | Execution |
+|---|---|---|
+| `setup()` | Initialize hardware and serial | Once at startup |
+| `loop()` | Main scheduler | Continuously |
+| `readSerial()` | Read incoming serial bytes | Continuously |
+| `processCommand()` | Validate and interpret wheel commands | When a complete command arrives |
+| `crc16Ccitt()` | Calculate message CRC | During communication |
+| `sendPayload()` | Send CRC-protected messages | During telemetry |
+| `leftEncoderInterrupt()` | Count left encoder transitions | On left encoder A changes |
+| `rightEncoderInterrupt()` | Count right encoder transitions | On right encoder A changes |
+| `updateControl()` | Estimate speed and update motors | 100 Hz |
+| `pidOutput()` | Calculate wheel PWM | 100 Hz per wheel |
+| `setMotor()` | Apply PWM and direction | 100 Hz per wheel |
+| `sendTelemetry()` | Transmit wheel feedback | 50 Hz |
+
+---
+
+# 11. Parameters we need to calibrate
+
+These are the parameters that will most strongly influence physical robot performance.
+
+| Parameter | Current value | My assessment |
+|---|---:|---|
+| Encoder counts/revolution | 450 | **Must measure** |
+| Maximum wheel speed | 6 rad/s | Verify motor capability |
+| Maximum PWM | 200 | Start conservatively |
+| Feed-forward gain | 12 | Requires tuning |
+| Proportional gain | 4 | Requires tuning |
+| Integral gain | 8 | Requires tuning |
+| Integral limit | 6 | Review during tuning |
+| Control frequency | 100 Hz | Reasonable, but speed quantization needs attention |
+| Telemetry frequency | 50 Hz | Reasonable |
+| Command timeout | 250 ms | Reasonable starting point |
+| Motor polarity | Right −1, left +1 | Verify physically |
+| Encoder polarity | Right −1, left +1 | Verify physically |
+
+One important point: **The firmware doesn't contain wheel radius or wheel separation.**
+
+Those parameters belong in your ROS 2 differential-drive controller configuration.
+
+The Arduino controls angular velocity in rad/s, while ROS 2 uses wheel geometry to convert between robot motion and wheel motion.
+
+---
+
+# 12. Four improvements I would consider
+
+Before we start mapping your room, I see four opportunities to improve the firmware.
+
+**1. Encoder velocity estimation**
+
+At 450 counts/revolution, instantaneous velocity measurements at 100 Hz are coarse.
+
+We should consider a longer measurement window or filtering before tuning the PI controller.
+
+**2. Feed-forward calibration**
+
+The current gain of 12 is an initial estimate.
+
+We should experimentally determine the relationship between PWM and steady-state wheel speed, including the minimum PWM needed to overcome friction.
+
+**3. Stronger command validation**
+
+Your CRC is useful, but the code does not validate sequence ordering or strictly reject malformed numeric fields.
+
+We can improve this without changing the overall architecture.
+
+**4. Hardware safety**
+
+The E-stop input is disabled, and zero PWM results in coasting. We should confirm the motor-power cutoff arrangement and ensure the robot stops safely under communication failure.
+
+---
+
+## 13. What I suggest we understand next
+
+The firmware contains three interconnected control concepts:
+
+**Encoder feedback → Wheel velocity estimation → PI control → Motor PWM**
+
+Understanding these is essential because inaccurate encoder measurements can make a correctly implemented controller behave poorly.
+
+Our next practical step should be to **verify the actual encoder counts per wheel revolution**.
+
+We can write a small Arduino test that prints encoder counts while you manually rotate each wheel exactly one revolution. That will establish whether `450` is correct before we start tuning the controller.
+
+Once we have that measurement, we can examine the PI controller mathematically and determine appropriate gains for your actual SGM25-370 motors.

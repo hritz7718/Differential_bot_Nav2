@@ -1,239 +1,158 @@
-Here is a practical ROS 2 troubleshooting command cheat sheet for this project.
+Here’s a practical run and troubleshooting guide for your **physical DiffBot on Raspberry Pi 5 with ROS 2 Jazzy**.
 
-**Build And Source**
+**Important:** The firmware file I can see currently has `kMaximumPwm = 200`, not `90`. Check the copy on the Pi and what you uploaded:
+
+```bash
+grep -n 'kMaximumPwm\|kUseEstop' ~/ros2_Nav2_diffbot/firmware/diffbot_mega/diffbot_mega.ino
+```
+
+For initial tests, use `90` and re-upload the firmware. The software emergency-stop input is currently **disabled**. Keep wheels raised and have a physical motor-power switch ready.
+
+## 1. Build And Upload
+
+Upload this file to the Mega using Arduino IDE:
+
+```text
+~/ros2_Nav2_diffbot/firmware/diffbot_mega/diffbot_mega.ino
+```
+
+Select **Arduino Mega 2560**. Close Serial Monitor after uploading.
+
+On the Pi:
+
 ```bash
 cd ~/ros2_Nav2_diffbot
-colcon build
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install
 source install/setup.bash
 ```
 
-Build only these packages:
+Find the Arduino’s stable port:
+
 ```bash
-colcon build --packages-select my_robot_description my_robot_bringup
-source install/setup.bash
+ls -l /dev/serial/by-id/
 ```
 
-**Run The Robot**
-Display URDF in RViz:
+## 2. Launch The Robot
+
+Keep motor power **off** initially:
+
 ```bash
-ros2 launch my_robot_description display.launch.xml
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_Nav2_diffbot/install/setup.bash
+
+ros2 launch my_robot_bringup physical_bringup.launch.py \
+  serial_port:=/dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_855313030313514001C1-if00 \
+  use_rviz:=false
 ```
 
-Run Gazebo simulation:
+Keep this terminal open. In every new terminal, first run:
+
 ```bash
-ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_Nav2_diffbot/install/setup.bash
 ```
 
-Drive the robot with keyboard:
+## 3. Check Controllers And Encoders
+
 ```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
+ros2 control list_controllers
+ros2 control list_hardware_components
+ros2 control list_hardware_interfaces
+ros2 topic hz /joint_states
 ```
 
-If velocity topic is different:
-```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cmd_vel
-```
+Both controllers should be **active**, and joint states should be around **50 Hz**. Stop `topic hz` with `Ctrl+C`.
 
-**Package Checks**
-List packages:
-```bash
-ros2 pkg list
-```
+Check encoder positions:
 
-Find your packages:
 ```bash
-ros2 pkg list | grep my_robot
-```
-
-Show package path:
-```bash
-ros2 pkg prefix my_robot_description
-ros2 pkg prefix my_robot_bringup
-```
-
-List package executables:
-```bash
-ros2 pkg executables my_robot_description
-ros2 pkg executables my_robot_bringup
-```
-
-**Nodes**
-List running nodes:
-```bash
-ros2 node list
-```
-
-Inspect a node:
-```bash
-ros2 node info /robot_state_publisher
-```
-
-Common nodes to check:
-```bash
-ros2 node info /gazebo
-ros2 node info /robot_state_publisher
-```
-
-**Topics**
-List topics:
-```bash
-ros2 topic list
-```
-
-List topics with message types:
-```bash
-ros2 topic list -t
-```
-
-Inspect a topic:
-```bash
-ros2 topic info /cmd_vel
-ros2 topic info /odom
-ros2 topic info /tf
-ros2 topic info /camera/image_raw
-```
-
-Echo topic data:
-```bash
-ros2 topic echo /odom
-ros2 topic echo /cmd_vel
-ros2 topic echo /camera/image_raw
-ros2 topic echo /tf
-```
-
-Check publish rate:
-```bash
-ros2 topic hz /odom
-ros2 topic hz /tf
-ros2 topic hz /camera/image_raw
-```
-
-Publish velocity manually:
-```bash
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
-```
-
-Turn in place:
-```bash
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.5}}"
-```
-
-Stop robot:
-```bash
-ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}"
-```
-
-**Services**
-List services:
-```bash
-ros2 service list
-```
-
-List services with types:
-```bash
-ros2 service list -t
-```
-
-Show service type:
-```bash
-ros2 service type /spawn_entity
-```
-
-Call empty service:
-```bash
-ros2 service call /reset_simulation std_srvs/srv/Empty
-ros2 service call /reset_world std_srvs/srv/Empty
-```
-
-Pause/unpause Gazebo:
-```bash
-ros2 service call /pause_physics std_srvs/srv/Empty
-ros2 service call /unpause_physics std_srvs/srv/Empty
-```
-
-**TF And Frames**
-Show TF tree:
-```bash
-ros2 run tf2_tools view_frames
-```
-
-Echo transform:
-```bash
-ros2 run tf2_ros tf2_echo odom base_footprint
-ros2 run tf2_ros tf2_echo base_link camera_link
-ros2 run tf2_ros tf2_echo camera_link camera_link_optical
-```
-
-Check robot state:
-```bash
-ros2 topic echo /robot_description
 ros2 topic echo /joint_states
 ```
 
-**URDF/Xacro Checks**
-Expand xacro:
+Turn each wheel **forward by hand**. Its own position should increase. If either decreases, its encoder sign needs correction before powered testing.
+
+## 4. Test Movement
+
+With wheels raised, encoder signs verified, and motor power connected:
+
 ```bash
-xacro src/my_robot_description/urdf/my_robot.urdf.xacro
+timeout 3s ros2 topic pub -r 5 /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.05}, angular: {z: 0.0}}"
 ```
 
-Save expanded URDF:
+Both wheels should rotate forward, then stop after the publisher exits. If they don’t stop, **switch off motor power immediately**.
+
+Slow rotation test:
+
 ```bash
-xacro src/my_robot_description/urdf/my_robot.urdf.xacro > /tmp/my_robot.urdf
+timeout 3s ros2 topic pub -r 5 /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0}, angular: {z: 0.3}}"
 ```
 
-Check URDF:
+The wheels should turn in opposite directions.
+
+## 5. Keyboard Teleop
+
+Install once:
+
 ```bash
-check_urdf /tmp/my_robot.urdf
+sudo apt install ros-jazzy-teleop-twist-keyboard
 ```
 
-**Gazebo Checks**
-See spawned model/entity:
+Run:
+
 ```bash
-ros2 topic list | grep gazebo
-ros2 service list | grep gazebo
+ros2 run teleop_twist_keyboard teleop_twist_keyboard \
+  --ros-args -p stamped:=false -r cmd_vel:=/cmd_vel
 ```
 
-If robot does not move, check:
+Use `i` forward, `,` backward, `j/l` turn, `k` stop. Use `z` to reduce speed. Stop the program with `Ctrl+C`, not `Ctrl+Z`.
+
+## 6. Diagnose ROS
+
 ```bash
-ros2 topic info /cmd_vel
-ros2 topic echo /cmd_vel
-ros2 topic echo /odom
+# Nodes, topics, and services
 ros2 node list
+ros2 topic list
+ros2 service list
+
+# Command path
+ros2 topic info /cmd_vel -v
+ros2 topic info /diff_drive_controller/cmd_vel -v
+ros2 topic echo /diff_drive_controller/cmd_vel
+
+# Wheel feedback and odometry
+ros2 topic hz /joint_states
+ros2 topic echo /joint_states
+ros2 topic hz /diff_drive_controller/odom
+ros2 topic echo /diff_drive_controller/odom
+
+# Transform
+ros2 run tf2_ros tf2_echo odom base_footprint
 ```
 
-**Camera Checks**
-List image topics:
-```bash
-ros2 topic list | grep camera
-ros2 topic list | grep image
-```
+**Correction to my earlier advice:** with the current physical launch, odometry is normally `/diff_drive_controller/odom`, not `/odom`. Confirm with `ros2 topic list | grep odom`.
 
-Echo camera info:
-```bash
-ros2 topic echo /camera/camera_info
-```
+## 7. Common Problems
 
-View image:
-```bash
-ros2 run rqt_image_view rqt_image_view
-```
+- **`Velocity command timed out`:** normal when no teleop command is being sent.
+- **Controllers inactive or serial I/O error:**
 
-**Useful GUI Tools**
-```bash
-rqt
-rqt_graph
-rviz2
-```
+  ```bash
+  ls -l /dev/serial/by-id/
+  sudo dmesg -T | grep -Ei 'usb|ttyACM|disconnect|over-current' | tail -40
+  ```
 
-For this project, your main launch command is:
+  Stop bringup and resolve USB power/wiring before restarting. Don’t share the serial port with Serial Monitor.
 
-```bash
-ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
-```
+- **No motor movement, but commands appear:** check L298N motor supply, logic power, common ground, and `ENA`/`ENB` wiring. The enable jumpers must be removed for Mega PWM control.
+- **Wheels move but encoder positions don’t:** check encoder 5 V, ground, and A/B connections. Confirm the encoder is rated for 5 V.
+- **One wheel turns backward:** stop; check motor polarity and firmware motor-sign constants.
+- **`twist_stamper.py not found`:**
 
-Then in another terminal:
+  ```bash
+  chmod +x ~/ros2_Nav2_diffbot/src/my_robot_bringup/scripts/twist_stamper.py
+  ```
 
-```bash
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
-```
-
+The main files are [firmware](/home/ragnarhritz/ros2_Nav2_diffbot/firmware/diffbot_mega/diffbot_mega.ino), [controller parameters](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_bringup/config/controllers.yaml), and [physical launch](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_bringup/launch/physical_bringup.launch.py). Actual hardware behaviour and the Pi’s current firmware have not been verified from here.

@@ -1,0 +1,606 @@
+# ROS 2 Jazzy Docker — Complete Command Cheat Sheet
+
+For your **DiffBot project**, we'll use:
+
+- **Raspberry Pi 5:** ROS 2 Jazzy, motors, LiDAR, SLAM and Nav2.
+- **Laptop:** Ubuntu 22.04 + Docker with ROS 2 Jazzy.
+- **Docker:** RViz, RQT Graph, TF visualization, ROS debugging and teleoperation.
+
+Your existing ROS 2 Humble installation will remain unchanged.
+
+## 1. Start Docker with ROS 2 Jazzy
+
+First, open a **normal laptop terminal**, not the Docker terminal.
+
+### Allow GUI applications
+
+```bash
+xhost +si:localuser:root
+```
+
+### Create a folder for persistent files
+
+```bash
+mkdir -p ~/diffbot_jazzy_data
+```
+
+### Create and start the container
+
+```bash
+sudo docker run -it -d \
+  --name diffbot_jazzy \
+  --network host \
+  --ipc host \
+  -e DISPLAY="$DISPLAY" \
+  -e QT_QPA_PLATFORM=xcb \
+  -e QT_X11_NO_MITSHM=1 \
+  -e LIBGL_ALWAYS_SOFTWARE=1 \
+  -e GALLIUM_DRIVER=llvmpipe \
+  -e ROS_DOMAIN_ID=0 \
+  -e ROS_LOCALHOST_ONLY=0 \
+  -e ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
+  -v "$HOME/diffbot_jazzy_data:/data" \
+  osrf/ros:jazzy-desktop bash
+```
+
+This configuration uses **software rendering** to avoid your earlier Intel `iris` graphics error.
+
+It also uses host networking so ROS 2 can communicate with your Raspberry Pi.
+
+**Important:** This is a persistent container. You create it only once. If an older container with the same name exists, remove it first:
+
+```bash
+sudo docker stop diffbot_jazzy
+sudo docker rm diffbot_jazzy
+```
+
+Then run the creation command above.
+
+---
+
+## 2. Daily Docker commands
+
+These are the commands you'll use most frequently.
+
+| Task | Command |
+|---|---|
+| Start existing container | `sudo docker start diffbot_jazzy` |
+| Enter Docker terminal | `sudo docker exec -it diffbot_jazzy bash` |
+| Open another Docker terminal | `sudo docker exec -it diffbot_jazzy bash` |
+| Exit current Docker terminal | `exit` |
+| Stop container | `sudo docker stop diffbot_jazzy` |
+| Restart container | `sudo docker restart diffbot_jazzy` |
+| List running containers | `sudo docker ps` |
+| List all containers | `sudo docker ps -a` |
+| View container logs | `sudo docker logs diffbot_jazzy` |
+| Delete container | `sudo docker rm -f diffbot_jazzy` |
+| Check Docker images | `sudo docker images` |
+
+**Remember:** `exit` from an `exec` terminal does not stop the main container.
+
+### Your daily workflow
+
+On your laptop:
+
+```bash
+sudo docker start diffbot_jazzy
+sudo docker exec -it diffbot_jazzy bash
+```
+
+Inside Docker:
+
+```bash
+echo $ROS_DISTRO
+```
+
+Expected:
+
+```text
+jazzy
+```
+
+Now you can run ROS tools.
+
+---
+
+# 3. Running ROS 2 tools inside Docker
+
+Open a Docker terminal:
+
+```bash
+sudo docker exec -it diffbot_jazzy bash
+```
+
+### RViz2
+
+```bash
+rviz2
+```
+
+Save your RViz configuration inside `/data` so it persists:
+
+```bash
+rviz2 -d /data/diffbot.rviz
+```
+
+The second command works after you have saved a configuration to that path.
+
+### RQT Graph
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+This visualizes communication between ROS nodes.
+
+### RQT GUI
+
+```bash
+rqt
+```
+
+### TF tree visualization
+
+```bash
+ros2 run rqt_tf_tree rqt_tf_tree
+```
+
+### Generate TF frame diagram
+
+```bash
+cd /data
+ros2 run tf2_tools view_frames
+```
+
+This generates a TF diagram you can inspect.
+
+### Inspect a specific transform
+
+```bash
+ros2 run tf2_ros tf2_echo odom base_footprint
+```
+
+### Check ROS 2 communication
+
+```bash
+ros2 node list
+ros2 topic list
+ros2 service list
+ros2 action list
+```
+
+### Check DiffBot topics
+
+```bash
+ros2 topic echo /joint_states --once
+ros2 topic echo /odom --once
+ros2 topic hz /scan
+ros2 topic info /scan -v
+```
+
+### Check ROS 2 Control
+
+```bash
+ros2 control list_controllers
+ros2 control list_hardware_interfaces
+```
+
+These commands query the controller manager running on your Raspberry Pi, provided ROS 2 networking is working.
+
+---
+
+# 4. Install missing ROS 2 tools
+
+Some tools might not be included in the Docker image.
+
+Inside Docker:
+
+```bash
+apt update
+```
+
+Install useful debugging tools:
+
+```bash
+apt install -y \
+  ros-jazzy-rqt \
+  ros-jazzy-rqt-graph \
+  ros-jazzy-rqt-tf-tree \
+  ros-jazzy-tf2-tools \
+  ros-jazzy-teleop-twist-keyboard \
+  ros-jazzy-ros2controlcli \
+  iputils-ping \
+  net-tools
+```
+
+Because your container is persistent, these installations remain available when you stop and restart it.
+
+However, deleting and recreating the container removes installed packages. Files in `/data` remain on your laptop.
+
+---
+
+# 5. Connect Docker to Raspberry Pi
+
+Both computers must be connected to the same network.
+
+### On Raspberry Pi
+
+```bash
+hostname -I
+```
+
+Check the ROS configuration:
+
+```bash
+echo $ROS_DISTRO
+echo $ROS_DOMAIN_ID
+echo $ROS_AUTOMATIC_DISCOVERY_RANGE
+```
+
+For this setup, use:
+
+```bash
+export ROS_DOMAIN_ID=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+export ROS_LOCALHOST_ONLY=0
+```
+
+Start your physical DiffBot bringup on the Pi.
+
+### On laptop — inside Docker
+
+```bash
+ros2 node list
+```
+
+You should see nodes from your Raspberry Pi, such as:
+
+```text
+/robot_state_publisher
+/controller_manager
+/diff_drive_controller
+/joint_state_broadcaster
+/sllidar_node
+```
+
+The exact names depend on your running configuration.
+
+Check:
+
+```bash
+ros2 topic list
+```
+
+You should be able to access the robot's published topics.
+
+**You do not need to install your entire DiffBot workspace inside Docker just to receive `/scan`, `/odom` and `/tf`.**
+
+However, to visualize your custom robot meshes in RViz, those mesh resources must also be accessible inside Docker. We can mount and build your robot-description package for Jazzy when needed.
+
+---
+
+# 6. Basic Docker troubleshooting
+
+## Problem A: Docker container already exists
+
+Error:
+
+```text
+Conflict. The container name "/diffbot_jazzy" is already in use
+```
+
+Solution:
+
+If you want to reuse it:
+
+```bash
+sudo docker start diffbot_jazzy
+sudo docker exec -it diffbot_jazzy bash
+```
+
+If you intentionally want a fresh container:
+
+```bash
+sudo docker rm -f diffbot_jazzy
+```
+
+Then recreate it.
+
+**Warning:** Removing a container deletes changes made inside its writable filesystem. Files saved in your mounted `/data` folder are preserved.
+
+---
+
+## Problem B: RViz graphics error
+
+Your previous error:
+
+```text
+MESA: error: Failed to query drm device
+glx: failed to create dri3 screen
+failed to load driver: iris
+```
+
+Inside Docker:
+
+```bash
+export LIBGL_ALWAYS_SOFTWARE=1
+export GALLIUM_DRIVER=llvmpipe
+rviz2
+```
+
+These settings are already included in our new Docker startup command.
+
+### Check OpenGL
+
+Install:
+
+```bash
+apt install -y mesa-utils
+```
+
+Then:
+
+```bash
+glxinfo -B
+```
+
+With software rendering, you should see a renderer such as `llvmpipe`.
+
+**Optional GPU acceleration:** Later, we can recreate the container with `/dev/dri` access and remove the software-rendering variables. That should improve RViz performance if your host GPU drivers are compatible.
+
+---
+
+## Problem C: RViz window doesn't open
+
+Check:
+
+```bash
+echo $DISPLAY
+```
+
+It should not be empty.
+
+From your normal laptop terminal:
+
+```bash
+xhost +si:localuser:root
+```
+
+Restart the Docker container if necessary:
+
+```bash
+sudo docker restart diffbot_jazzy
+```
+
+Then enter Docker and try:
+
+```bash
+rviz2
+```
+
+The warning:
+
+```text
+QStandardPaths: XDG_RUNTIME_DIR not set
+```
+
+is usually harmless if RViz opens.
+
+When finished using root GUI access, you can revoke the X11 permission from the laptop terminal:
+
+```bash
+xhost -si:localuser:root
+```
+
+---
+
+## Problem D: ROS nodes from Raspberry Pi aren't visible
+
+Inside Docker:
+
+```bash
+echo $ROS_DOMAIN_ID
+echo $ROS_AUTOMATIC_DISCOVERY_RANGE
+echo $ROS_LOCALHOST_ONLY
+```
+
+Expected:
+
+```text
+0
+SUBNET
+0
+```
+
+Check the same settings on the Raspberry Pi.
+
+Then restart ROS discovery:
+
+```bash
+ros2 daemon stop
+ros2 daemon start
+ros2 node list
+```
+
+If the Pi's nodes are still missing, check:
+
+1. Both devices are on the same Wi-Fi/subnet.
+2. The Pi is running its ROS nodes.
+3. Both devices use compatible DDS middleware.
+4. The router is not blocking multicast or client-to-client communication.
+5. A firewall is not blocking DDS traffic.
+
+Check network connectivity from your laptop:
+
+```bash
+ping <RPI_IP_ADDRESS>
+```
+
+For example, replace `<RPI_IP_ADDRESS>` with the current address shown by `hostname -I` on the Pi.
+
+---
+
+## Problem E: Topics visible, but no messages received
+
+Check:
+
+```bash
+ros2 topic info /scan -v
+```
+
+Then:
+
+```bash
+ros2 topic echo /scan --qos-reliability best_effort --once
+```
+
+This helps identify QoS compatibility issues.
+
+For `/joint_states`:
+
+```bash
+ros2 topic echo /joint_states --once
+```
+
+If the topic exists but has no publisher, the relevant ROS node or controller may not be active.
+
+---
+
+## Problem F: Robot model doesn't appear in RViz
+
+Check:
+
+```bash
+ros2 topic list | grep robot_description
+```
+
+Then inspect the topic:
+
+```bash
+ros2 topic info /robot_description -v
+```
+
+Also verify:
+
+```bash
+ros2 topic echo /joint_states --once
+```
+
+And:
+
+```bash
+ros2 run tf2_ros tf2_echo base_link laser_link
+```
+
+Possible causes include missing robot-description data, missing custom mesh files inside Docker, incorrect TF frames or a mismatch between the URDF and actual joint names.
+
+---
+
+# 7. Docker file management
+
+Your laptop folder:
+
+```text
+~/diffbot_jazzy_data
+```
+
+is available inside Docker as:
+
+```text
+/data
+```
+
+Anything saved in `/data` remains available after restarting or recreating the container.
+
+### Copy a file into Docker
+
+From your laptop:
+
+```bash
+sudo docker cp myfile.txt diffbot_jazzy:/root/
+```
+
+### Copy a file from Docker
+
+```bash
+sudo docker cp diffbot_jazzy:/root/myfile.txt ~/
+```
+
+### Check disk usage
+
+```bash
+sudo docker system df
+```
+
+### Remove unused stopped containers
+
+```bash
+sudo docker container prune
+```
+
+Be careful with cleanup commands: they may remove containers you intended to keep.
+
+---
+
+# 8. Useful ROS commands for your DiffBot
+
+Keep this reference handy.
+
+| What you want | Command |
+|---|---|
+| Open RViz | `rviz2` |
+| Open RQT Graph | `ros2 run rqt_graph rqt_graph` |
+| Show all nodes | `ros2 node list` |
+| Inspect a node | `ros2 node info /robot_state_publisher` |
+| Show topics | `ros2 topic list -t` |
+| Read LiDAR | `ros2 topic echo /scan --once` |
+| Check LiDAR frequency | `ros2 topic hz /scan` |
+| Read wheel encoders via joint states | `ros2 topic echo /joint_states --once` |
+| Read odometry | `ros2 topic echo /odom --once` |
+| Check controllers | `ros2 control list_controllers` |
+| Inspect TF | `ros2 run tf2_tools view_frames` |
+| Check ROS version | `echo $ROS_DISTRO` |
+
+---
+
+## 9. My recommended daily workflow
+
+**Terminal 1 — Raspberry Pi (via SSH)**
+
+Start your physical DiffBot bringup, including `ros2_control`, Arduino communication and LiDAR.
+
+**Terminal 2 — Laptop**
+
+```bash
+sudo docker start diffbot_jazzy
+sudo docker exec -it diffbot_jazzy bash
+rviz2
+```
+
+**Terminal 3 — Laptop**
+
+```bash
+sudo docker exec -it diffbot_jazzy bash
+ros2 run rqt_graph rqt_graph
+```
+
+**Terminal 4 — Laptop**
+
+```bash
+sudo docker exec -it diffbot_jazzy bash
+ros2 topic list
+ros2 topic echo /joint_states
+```
+
+This lets you simultaneously:
+
+- Visualize your physical DiffBot in RViz.
+- Understand ROS node connections using RQT.
+- Inspect encoder feedback and odometry.
+- Monitor LiDAR data.
+- Debug ROS 2 communication.
+
+**One key rule:** Run the robot's hardware controllers on the Raspberry Pi, and use the laptop for visualization and debugging. You don't need a second `controller_manager` or `robot_state_publisher` on the laptop.
+
+Once this works, we'll save a dedicated **DiffBot RViz configuration** so you can open your robot model, LiDAR, TF, odometry and map with a single command.
