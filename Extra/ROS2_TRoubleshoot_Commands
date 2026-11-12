@@ -45,6 +45,14 @@ ros2 launch my_robot_bringup physical_bringup.launch.py \
   serial_port:=/dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_855313030313514001C1-if00 \
   use_rviz:=false
 ```
+TO launch with Lidar port
+```bash
+
+ros2 launch my_robot_bringup physical_bringup.launch.py \
+  serial_port:=/dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_855313030313514001C1-if00 \
+  lidar_serial_port:=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0 \
+  use_rviz:=false
+```
 
 Keep this terminal open. In every new terminal, first run:
 
@@ -156,3 +164,31 @@ ros2 run tf2_ros tf2_echo odom base_footprint
   ```
 
 The main files are [firmware](/home/ragnarhritz/ros2_Nav2_diffbot/firmware/diffbot_mega/diffbot_mega.ino), [controller parameters](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_bringup/config/controllers.yaml), and [physical launch](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_bringup/launch/physical_bringup.launch.py). Actual hardware behaviour and the Pi’s current firmware have not been verified from here.
+
+
+Ros commands like -d, -p, etc
+
+Options depend on the command they follow. There isn’t one universal meaning for `-p`, `-d`, or other flags.
+
+| Option | Command example | Meaning |
+|---|---|---|
+| `-d` | `rviz2 -d /data/diffbot.rviz` | Load an RViz display configuration. |
+| `-d` | `docker run -d ...` | Run a container in the background, called *detached mode*. |
+| `-p` | `mkdir -p ~/my_maps` | Create the folder and any missing parent folders. |
+| `-p` | `ros2 run ... --ros-args -p stamped:=false` | Set the ROS parameter `stamped` to `false`. |
+| `-r` | `ros2 topic pub -r 5 /cmd_vel ...` | Publish repeatedly at 5 Hz, or five times per second. |
+| `-r` | `ros2 run ... --ros-args -r cmd_vel:=/cmd_vel` | Remap a ROS topic name. |
+| `-f` | `ros2 run nav2_map_server map_saver_cli -f ~/my_maps/map` | Set the output path and filename prefix for the saved map. |
+| `-l` | `ls -l /dev/serial/by-id/` | Show a detailed listing, including permissions and symlink targets. |
+| `-v` | `ros2 topic info /scan -v` | Show detailed publisher, subscriber, and QoS information. |
+| `-v` | `docker run -v ~/my_data:/data ...` | Mount a host folder into the container. |
+| `-i` | `docker exec -it diffbot_jazzy bash` | Keep standard input open for interaction. |
+| `-t` | `docker exec -it diffbot_jazzy bash` | Allocate a terminal. `-it` combines `-i` and `-t`. |
+| `-aG` | `sudo usermod -aG dialout "$USER"` | Add the user to the `dialout` group without replacing their other supplementary groups. |
+| `--once` | `ros2 topic echo --once /scan` | Print one message, then exit. |
+| `--help` | `ros2 topic echo --help` | Show the available options for that command. |
+| `--symlink-install` | `colcon build --symlink-install` | Use symlinks where supported so some source-file changes are reflected without copying them again. |
+| `--ff-only` | `git pull --ff-only origin main` | Pull only if Git can update without creating a merge or rebase. |
+| `--qos-reliability` | `ros2 topic hz /scan --qos-reliability best_effort` | Set the ROS subscriber’s reliability policy. |
+
+**Tip:** Short options use one dash, like `-d`; long options generally use two, like `--help`. Check the exact command with `--help` whenever unsure.

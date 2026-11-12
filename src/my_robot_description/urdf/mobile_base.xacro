@@ -8,7 +8,7 @@
     <xacro:property name="ground_to_chassis_top" value="0.093" />
     <xacro:property name="wheel_radius" value="0.03425" />
     <xacro:property name="wheel_length" value="0.026" />
-    <xacro:property name="wheel_separation" value="0.285" />
+    <xacro:property name="wheel_separation" value="0.305" />
     <xacro:property name="base_link_height" value="${wheel_radius}" />
     <xacro:property name="axle_to_chassis_front" value="0.225" />
     <xacro:property name="chassis_center_x"
