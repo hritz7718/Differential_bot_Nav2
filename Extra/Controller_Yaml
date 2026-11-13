@@ -1,0 +1,41 @@
+[controllers.yaml](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_bringup/config/controllers.yaml) configures `ros2_control` for your **physical robot**. It has two parts:
+
+### 1. Controller Manager
+
+```yaml
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+```
+
+The manager runs the control loop at **50 Hz** and loads:
+
+- `joint_state_broadcaster`: publishes wheel position and velocity on `/joint_states`.
+- `diff_drive_controller`: converts robot velocity commands into wheel speeds and calculates odometry.
+
+### 2. Differential Drive Controller
+
+| Parameter | Current value | What it controls |
+|---|---:|---|
+| `left_wheel_names`, `right_wheel_names` | Wheel joint names | Connects the controller to the correct URDF joints. |
+| `wheel_radius` | `0.03425 m` | Converts wheel rotation into travel distance. |
+| `wheel_separation` | `0.285 m` | Distance between wheels, used to calculate turns. |
+| Wheel multipliers | `1.0` | Calibration corrections for radius and separation. |
+| `odom_frame_id` | `odom` | Parent frame of odometry. |
+| `base_frame_id` | `base_footprint` | Robot frame tracked by odometry. |
+| `enable_odom_tf` | `true` | Publishes `odom → base_footprint`. |
+| `open_loop` | `false` | Uses wheel feedback for odometry rather than assuming commanded motion happened. |
+| `position_feedback` | `true` | Uses encoder-derived wheel positions for odometry. |
+| `publish_rate` | `50 Hz` | Odometry publication rate. |
+| `cmd_vel_timeout` | `0.5 s` | Stops using a command if no fresh command arrives. |
+| `velocity_rolling_window_size` | `10` | Number of samples used to smooth estimated velocity. |
+| `publish_limited_velocity` | `true` | Publishes the command after controller limits are applied. |
+
+### Limits And Covariance
+
+- `linear.x.max_velocity: 0.20` means a maximum forward command of **0.20 m/s**.
+- `angular.z.max_velocity: 1.0` means a maximum turning command of **1.0 rad/s**.
+- The acceleration and deceleration values limit how quickly those commands change.
+- `pose_covariance_diagonal` and `twist_covariance_diagonal` describe estimated odometry uncertainty. They are starting values, not measured accuracy.
+
+**Important:** Your URDF currently has `wheel_separation: 0.305 m` and `wheel_radius: 0.034 m`, but this file still has `0.285 m` and `0.03425 m`. If your new measurements are correct, update the controller values too; URDF edits do **not** automatically change physical odometry.

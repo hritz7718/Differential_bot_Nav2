@@ -1,0 +1,48 @@
+That line loads the **differential-drive plugin for Gazebo Classic**:
+
+```xml
+<plugin name="diff_drive_controller"
+        filename="libgazebo_ros_diff_drive.so">
+```
+
+- `<plugin>` tells Gazebo to load additional software for the simulated robot.
+- `name="diff_drive_controller"` is the name you assign to this plugin instance. You’ll see it in Gazebo logs.
+- `filename="libgazebo_ros_diff_drive.so"` is the compiled plugin library Gazebo loads. The `.so` file contains the actual drive-controller code.
+
+The settings inside the opening and closing `<plugin>` tags configure that code.
+
+
+### What It Does
+
+```text
+/cmd_vel → Gazebo diff-drive plugin → simulated wheel joints
+                                    → /odom and odom TF
+```
+
+The plugin receives a `geometry_msgs/msg/Twist` command, calculates the required left and right wheel speeds, and applies them to the simulated joints.
+
+| Command | Wheel behaviour |
+|---|---|
+| Positive `linear.x` | Both wheels move forward. |
+| Negative `linear.x` | Both wheels move backward. |
+| Positive `angular.z` | Robot turns left. |
+| Negative `angular.z` | Robot turns right. |
+
+### Your Plugin Parameters
+
+| Parameter | Your setting | Purpose |
+|---|---|---|
+| `update_rate` | `50` | Updates the plugin approximately 50 times per simulated second. |
+| `left_joint` | `base_left_wheel_joint` | Identifies the simulated left wheel joint. |
+| `right_joint` | `base_right_wheel_joint` | Identifies the simulated right wheel joint. |
+| `wheel_separation` | `${wheel_separation}` | Distance between wheel centres, used for turning calculations. |
+| `wheel_diameter` | `${2.0 * wheel_radius}` | Wheel diameter, used to convert between wheel rotation and travel. |
+| `publish_odom` | `true` | Publishes simulated odometry. |
+| `publish_odom_tf` | `true` | Publishes the `odom → base_footprint` transform. |
+| `publish_wheel_tf` | `false` | Prevents this plugin from publishing wheel transforms. Your joint-state and robot-state publishers handle wheel TF instead. |
+| `odometry_frame` | `odom` | Parent frame for odometry. |
+| `robot_base_frame` | `base_footprint` | Robot frame used as the odometry child. |
+
+These settings are in [mobile_base_gazebo.xacro](/home/ragnarhritz/ros2_Nav2_diffbot/src/my_robot_description/urdf/mobile_base_gazebo.xacro). The plugin’s actual implementation is in the [Gazebo ROS source](https://github.com/ros-simulation/gazebo_ros_pkgs/blob/ros2/gazebo_plugins/src/gazebo_ros_diff_drive.cpp).
+
+**Important:** This plugin is for **simulation only**. Your physical robot uses `ros2_control`, the custom hardware plugin, the Mega, and the motor driver instead. Changing this Gazebo plugin will not directly change the real motors.

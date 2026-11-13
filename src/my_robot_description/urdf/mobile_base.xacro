@@ -5,9 +5,9 @@
     <xacro:property name="base_length" value="0.310" />
     <xacro:property name="base_width" value="0.260" />
     <xacro:property name="base_height" value="0.045" />
-    <xacro:property name="ground_to_chassis_top" value="0.093" />
-    <xacro:property name="wheel_radius" value="0.03425" />
-    <xacro:property name="wheel_length" value="0.026" />
+    <xacro:property name="ground_to_chassis_top" value="0.089" />
+    <xacro:property name="wheel_radius" value="0.034" />
+    <xacro:property name="wheel_length" value="0.025" />
     <xacro:property name="wheel_separation" value="0.305" />
     <xacro:property name="base_link_height" value="${wheel_radius}" />
     <xacro:property name="axle_to_chassis_front" value="0.225" />
