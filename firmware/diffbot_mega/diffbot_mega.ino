@@ -20,8 +20,8 @@ constexpr uint8_t kEstopPin = 18;
 // Change these signs only after the raised-wheel polarity test.
 constexpr int8_t kRightMotorSign = -1;
 constexpr int8_t kLeftMotorSign = 1;
-constexpr int8_t kRightEncoderSign = -1;
-constexpr int8_t kLeftEncoderSign = 1;
+constexpr int8_t kRightEncoderSign = 1;
+constexpr int8_t kLeftEncoderSign = -1;
 constexpr bool kUseEstop = false;
 
 constexpr long kEncoderCountsPerRevolution = 450;
