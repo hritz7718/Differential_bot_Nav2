@@ -1,0 +1,163 @@
+Here are all **six launch files** in your project, plus SLAM and standalone RViz commands.
+
+## 1. Robot Model In RViz Only
+
+On the laptop, with no Gazebo or hardware:
+
+```bash
+cd ~/ros2_Nav2_diffbot
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+
+ros2 launch my_robot_description display.launch.py
+```
+
+The XML version does the same job:
+
+```bash
+ros2 launch my_robot_description display.launch.xml
+```
+
+Both open RViz and the joint-control GUI.
+
+## 2. Gazebo Simulation
+
+```bash
+ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
+```
+
+This starts Gazebo, the simulated robot, and RViz.
+
+Without the Gazebo graphical window:
+
+```bash
+ros2 launch my_robot_bringup my_robot_gazebo.launch.xml gui:=false
+```
+
+## 3. Simulation Navigation
+
+With Gazebo already running and SLAM stopped:
+
+```bash
+ros2 launch my_robot_bringup navigation.launch.py \
+  map:=$HOME/my_maps/my_world.yaml \
+  use_sim_time:=true
+```
+
+Change the map path to your saved simulation map. This launch starts Nav2, not Gazebo.
+
+## 4. Physical Robot Bringup
+
+On the **Pi**, source Jazzy and your workspace:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_Nav2_diffbot/install/setup.bash
+
+ARDUINO=/dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_855313030313514001C1-if00
+LIDAR=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+```
+
+Start the Mega, controllers, robot description, and LiDAR:
+
+```bash
+ros2 launch my_robot_bringup physical_bringup.launch.py \
+  serial_port:=$ARDUINO lidar_serial_port:=$LIDAR \
+  use_rviz:=false
+```
+
+For a **wheel test without LiDAR**:
+
+```bash
+ros2 launch my_robot_bringup physical_bringup.launch.py \
+  serial_port:=$ARDUINO use_lidar:=false use_rviz:=false
+```
+
+Standalone bringup accepts manual commands on `/cmd_vel`; those commands are **not collision-monitor protected**.
+
+## 5. Physical Navigation With Saved Map
+
+This launch starts **both physical bringup and Nav2**. Don’t run a second physical bringup alongside it.
+
+```bash
+ros2 launch my_robot_bringup physical_navigation.launch.py \
+  map:=$HOME/my_maps/physical_map.yaml \
+  serial_port:=$ARDUINO lidar_serial_port:=$LIDAR \
+  use_rviz:=false
+```
+
+Change the map path to your real saved map. **Do not send a goal yet**: first complete the checks in [PHYSICAL_NAVIGATION.md](/home/ragnarhritz/ros2_Nav2_diffbot/docs/PHYSICAL_NAVIGATION.md), including verifying the collision monitor, localization, and physical stopping behaviour.
+
+## 6. SLAM Mapping
+
+Run in another terminal with either Gazebo or physical bringup already running:
+
+```bash
+# Physical robot
+ros2 launch slam_toolbox online_async_launch.py use_sim_time:=false
+```
+
+```bash
+# Gazebo simulation
+ros2 launch slam_toolbox online_async_launch.py use_sim_time:=true
+```
+
+Stop SLAM before starting saved-map navigation with AMCL.
+
+## 7. RViz On Laptop Docker
+
+For visualization of the running physical robot:
+
+```bash
+sudo docker start diffbot_jazzy
+sudo docker exec -it diffbot_jazzy bash
+rviz2 -d /data/diffbot.rviz
+```
+
+Use `odom` as the fixed frame for a hardware-only test, or `map` when SLAM/AMCL is running.
+
+
+## 8. LAunching SLam
+There isn’t a combined mapping launch file in your project yet. Start SLAM **separately**, after physical bringup:
+
+```bash
+ros2 launch slam_toolbox online_async_launch.py use_sim_time:=false
+```
+
+For Gazebo, use `use_sim_time:=true`. Don’t run saved-map navigation/AMCL at the same time.
+
+## 9. TO save mapped layout
+
+While SLAM is running:
+
+```bash
+cd ~/my_maps
+ros2 run nav2_map_server map_saver_cli -f ~/my_maps/physical_map
+```
+
+This saves `physical_map.yaml` and `physical_map.pgm` in `~/my_maps`.
+
+## To tun Teleop
+With **physical bringup and SLAM already running**, open a new Pi terminal for teleop:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_Nav2_diffbot/install/setup.bash
+
+ros2 run teleop_twist_keyboard teleop_twist_keyboard \
+  --ros-args -p stamped:=false -p speed:=0.05 -p turn:=0.3
+```
+
+Use `i` forward, `,` backward, `j/l` turn, and `k` stop. Drive slowly and keep the robot in sight. Manual teleop is **not collision-monitor protected**.
+
+When mapping is complete, open another terminal **while SLAM is still running**:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+mkdir -p ~/my_maps
+
+ros2 run nav2_map_server map_saver_cli -f ~/my_maps/physical_map \
+  --ros-args -p map_subscribe_transient_local:=true
+```
+
+Your map will be saved as `~/my_maps/physical_map.yaml` and `physical_map.pgm`.
