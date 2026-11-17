@@ -10,7 +10,7 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
     bringup_dir = get_package_share_directory('my_robot_bringup')
     launch_dir = os.path.join(bringup_dir, 'launch')
-    params_file = os.path.join(bringup_dir, 'config', 'nav2_params.yaml')
+    params_file = os.path.join(bringup_dir, 'config', 'nav2_params_physical.yaml')
 
     hardware_arguments = [
         'serial_port', 'baud_rate', 'use_rviz', 'use_lidar',
@@ -34,7 +34,8 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(
                 os.path.join(launch_dir, 'physical_bringup.launch.py')),
             launch_arguments={
-                name: LaunchConfiguration(name) for name in hardware_arguments
+                **{name: LaunchConfiguration(name) for name in hardware_arguments},
+                'command_input_topic': '/cmd_vel_safe',
             }.items()),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(

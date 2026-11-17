@@ -26,6 +26,7 @@ def generate_launch_description():
     use_lidar = LaunchConfiguration('use_lidar')
     lidar_serial_port = LaunchConfiguration('lidar_serial_port')
     lidar_baud_rate = LaunchConfiguration('lidar_baud_rate')
+    command_input_topic = LaunchConfiguration('command_input_topic')
 
     robot_description = ParameterValue(
         Command([
@@ -61,6 +62,10 @@ def generate_launch_description():
             'lidar_baud_rate',
             default_value='115200',
             description='RPLIDAR A1 serial baud rate'),
+        DeclareLaunchArgument(
+            'command_input_topic',
+            default_value='/cmd_vel',
+            description='Unstamped velocity input for the hardware bridge'),
 
         Node(
             package='robot_state_publisher',
@@ -92,6 +97,7 @@ def generate_launch_description():
         Node(
             package='my_robot_bringup',
             executable='twist_stamper.py',
+            remappings=[('/cmd_vel', command_input_topic)],
             output='screen'),
 
         Node(

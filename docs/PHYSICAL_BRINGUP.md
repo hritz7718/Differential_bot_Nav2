@@ -1,42 +1,43 @@
 # Physical DiffBot Bringup
 
-This stage connects the Raspberry Pi 5, Arduino Mega, wheel encoders, and ADIY
-L293D module through `ros2_control`. Keep the wheels clear of the floor until
+This stage connects the Raspberry Pi 5, Arduino Mega, wheel encoders, and L298N
+module through `ros2_control`. Keep the wheels clear of the floor until
 all direction checks pass.
 
 ## Configured dimensions
 
 | Item | Value |
 | --- | ---: |
-| Wheel diameter | 68.5 mm |
-| Wheel separation | 285 mm |
-| Driven axle to caster center | 193 mm |
-| Chassis | 310 x 260 x 45 mm |
-| Chassis top above floor | 93 mm |
-| Driven axle to chassis front | 225 mm |
+| Wheel diameter | 68 mm |
+| Wheel separation | 227 mm |
+| Driven axle to caster center | 95 mm forward |
+| Chassis plates | Three plates, each 120 x 120 x 10 mm |
+| Plate center heights above floor | 55, 110, 160 mm |
+| Driven axle to chassis front | 110 mm |
 | Encoder count used by software | 450 counts/wheel revolution |
 
-The wheel width (26 mm), wheel mass (25 g each), and caster radius (15 mm) are
+The wheel width (25 mm), wheel mass (25 g each), and caster radius (15 mm) are
 temporary estimates. Measure them before final inertia and footprint tuning.
 
 ## Wiring
 
-ADIY L293D logic header order is `A1 A2 EN_A VCC GND EN_B B2 B1`.
+The following mapping assumes a common L298N module. Check the labels and
+jumper functions on the actual module before applying power.
 
-| L293D | Mega pin | Purpose |
+| L298N | Mega pin | Purpose |
 | --- | ---: | --- |
-| A1 | 7 | Right motor direction 1 |
-| A2 | 8 | Right motor direction 2 |
-| EN_A | 5 | Right motor PWM |
-| VCC | 5V | Driver logic power |
+| IN1 | 7 | Right motor direction 1 |
+| IN2 | 8 | Right motor direction 2 |
+| ENA | 5 | Right motor PWM |
+| IN3 | 9 | Left motor direction 1 |
+| IN4 | 10 | Left motor direction 2 |
+| ENB | 6 | Left motor PWM |
 | GND | GND | Common logic ground |
-| EN_B | 6 | Left motor PWM |
-| B2 | 10 | Left motor direction 2 |
-| B1 | 9 | Left motor direction 1 |
 
-Connect the right motor to `MA` and the left motor to `MB`. On both outputs,
-connect red to `M1` and white to `M2` as specified. Initial software polarity
-is set for mirrored motors and must still be verified.
+Connect the right motor to `OUT1/OUT2` and the left motor to `OUT3/OUT4`.
+Remove the ENA/ENB jumpers so the Mega can control PWM. The 5 V regulator
+jumper and 5 V terminal depend on the board: never connect two 5 V supplies
+together. Motor and encoder polarity must be verified with the wheels raised.
 
 | Encoder | Mega pin |
 | --- | ---: |
@@ -46,12 +47,12 @@ is set for mirrored motors and must still be verified.
 | Left B | 23 |
 
 Encoder power goes to Mega 5V/GND if the encoder is rated for 5V. Do not wire
-encoder outputs directly to Raspberry Pi GPIO. The optional normally-closed
-emergency-stop input is pin 18; it remains disabled in firmware until wired.
+encoder outputs directly to Raspberry Pi GPIO. The optional software stop input
+on pin 18 is disabled. Do not treat it as a physical emergency stop.
 
-Motor power goes to the L293D `V+` and `V-` terminals from a suitable motor
+Motor power goes to the L298N motor supply and GND terminals from a suitable motor
 supply. Never power the motors from the Mega or Pi 5V rail. The motor supply,
-L293D, Mega, and Pi USB connection must share ground. Add a fuse and a physical
+L298N, Mega, and Pi USB connection must share ground. Add a fuse and a physical
 power switch before floor testing.
 
 ## Firmware
@@ -59,9 +60,10 @@ power switch before floor testing.
 Open `firmware/diffbot_mega/diffbot_mega.ino` in Arduino IDE, select **Arduino
 Mega or Mega 2560**, select the correct port, and upload it.
 
-The initial firmware limits PWM to `90/255`, stops after 250 ms without a valid
-command, and checks every serial packet with CRC-16. PID values are starting
-values only. Watch L293D and motor temperature closely; stop immediately if the
+Check `kMaximumPwm` in the actual sketch before uploading; it currently limits
+PWM to `130/255`. The Mega stops after 250 ms without a valid serial command
+and checks packets with CRC-16. PI values are starting values only. Watch the
+driver and motor temperature closely; stop immediately if the
 driver overheats or resets.
 
 ## Build on Raspberry Pi
@@ -83,7 +85,6 @@ Build:
 
 ```bash
 cd ~/ros2_Nav2_diffbot
-rm -rf build install log
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
@@ -148,8 +149,8 @@ The scan header should use `lidar_link`. In RViz add a LaserScan display for
 `/scan`, select a connected fixed frame such as `odom`, and use a compatible
 reliability setting (Best Effort is compatible with either publisher policy).
 The URDF provides the fixed `base_link` to `lidar_link` transform; do not
-publish a second transform for it. Its position and zero rotation are model
-assumptions: measure the actual sensor location and yaw, and update the joint
+publish a second transform for it. Its position and minus 90 degree yaw are
+model assumptions: measure the actual sensor location and yaw, and update the joint
 in `src/my_robot_description/urdf/lidar.xacro` if needed. Synchronize the Pi
 and laptop clocks when using real time.
 
@@ -168,7 +169,7 @@ In a second sourced terminal:
 ros2 control list_hardware_interfaces
 ros2 control list_controllers
 ros2 topic hz /joint_states
-ros2 topic hz /odom
+ros2 topic hz /diff_drive_controller/odom
 ```
 
 Send a slow forward command for a few seconds:
@@ -178,7 +179,9 @@ ros2 topic pub -r 5 /cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.05}, angular: {z: 0.0}}"
 ```
 
-Stop the publisher with `Ctrl+C`; the robot must stop within 250 ms. Both
+Stop the publisher with `Ctrl+C`; verify the wheels stop promptly. The ROS
+controller timeout is 500 ms; the 250 ms Arduino watchdog applies when valid
+serial commands stop, not directly when the teleop publisher stops. Both
 wheels must rotate in the robot's forward direction and both encoder positions
 must increase. If a motor is reversed, change its `k*MotorSign`. If its encoder
 count is reversed, change its `k*EncoderSign`. Do not swap signs at random or

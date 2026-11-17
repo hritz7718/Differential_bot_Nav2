@@ -25,7 +25,7 @@
     <joint name="base_lidar_joint" type="fixed">
         <parent link="base_link" />
         <child link="lidar_link" />
-        <origin xyz="0.135 0.055 ${ground_to_chassis_top + lidar_height / 2.0 - base_link_height + 0.0675}"
+        <origin xyz="${axle_to_chassis_front - 0.082} 0 ${0.230 - base_link_height}"
                 rpy="0 0 ${-pi/2}" />
     </joint>
 

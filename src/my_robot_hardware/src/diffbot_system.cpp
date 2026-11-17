@@ -88,6 +88,8 @@ hardware_interface::CallbackReturn DiffBotSystem::on_configure(
   std::fill(hw_velocity_.begin(), hw_velocity_.end(), 0.0);
   std::fill(hw_command_.begin(), hw_command_.end(), 0.0);
   rx_buffer_.clear();
+  have_telemetry_sequence_ = false;
+  telemetry_fault_ = false;
 
   if (!open_serial()) {
     return hardware_interface::CallbackReturn::ERROR;
@@ -111,9 +113,13 @@ hardware_interface::CallbackReturn DiffBotSystem::on_activate(
   const rclcpp_lifecycle::State &)
 {
   std::fill(hw_command_.begin(), hw_command_.end(), 0.0);
-  active_ = true;
+  have_telemetry_sequence_ = false;
+  telemetry_fault_ = false;
   last_state_time_ = std::chrono::steady_clock::now();
-  send_payload("C,0,0,0");
+  if (!send_payload("C,0,0,0")) {
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  active_ = true;
   RCLCPP_INFO(logger_, "DiffBot hardware activated");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -163,6 +169,8 @@ hardware_interface::return_type DiffBotSystem::read(
     const ssize_t count = ::read(serial_fd_, buffer.data(), buffer.size());
     if (count > 0) {
       rx_buffer_.append(buffer.data(), static_cast<std::size_t>(count));
+    } else if (count < 0 && errno == EINTR) {
+      continue;
     } else if (count == 0 || errno == EAGAIN || errno == EWOULDBLOCK) {
       break;
     } else {
@@ -180,6 +188,11 @@ hardware_interface::return_type DiffBotSystem::read(
     }
     process_line(line);
   }
+  if (telemetry_fault_) {
+    hw_command_ = {{0.0, 0.0}};
+    send_payload("C,0,0,0");
+    return hardware_interface::return_type::ERROR;
+  }
   if (rx_buffer_.size() > 4096) {
     rx_buffer_.clear();
     RCLCPP_WARN(logger_, "Discarded an oversized serial frame");
@@ -189,6 +202,8 @@ hardware_interface::return_type DiffBotSystem::read(
     std::chrono::steady_clock::now() - last_state_time_).count();
   if (active_ && age > serial_timeout_ms_) {
     RCLCPP_ERROR(logger_, "Arduino telemetry timed out after %ld ms", age);
+    hw_command_ = {{0.0, 0.0}};
+    send_payload("C,0,0,0");
     return hardware_interface::return_type::ERROR;
   }
   return hardware_interface::return_type::OK;
@@ -201,7 +216,14 @@ hardware_interface::return_type DiffBotSystem::write(
     return hardware_interface::return_type::ERROR;
   }
 
-  constexpr double kMaximumWheelSpeed = 8.0;
+  if (!std::isfinite(hw_command_[kLeft]) || !std::isfinite(hw_command_[kRight])) {
+    RCLCPP_ERROR(logger_, "Non-finite wheel command; stopping hardware");
+    hw_command_ = {{0.0, 0.0}};
+    send_payload("C,0,0,0");
+    return hardware_interface::return_type::ERROR;
+  }
+
+  constexpr double kMaximumWheelSpeed = 6.0;
   const long left_mrad_s = std::lround(
     std::clamp(hw_command_[kLeft], -kMaximumWheelSpeed, kMaximumWheelSpeed) * 1000.0);
   const long right_mrad_s = std::lround(
@@ -286,8 +308,21 @@ bool DiffBotSystem::process_line(const std::string & line)
     return false;
   }
 
-  (void)sequence;
   (void)flags;
+  const auto current_sequence = static_cast<uint32_t>(sequence);
+  if (have_telemetry_sequence_) {
+    const uint32_t advance = current_sequence - telemetry_sequence_;
+    if (advance == 0) {
+      return false;
+    }
+    if (advance > 0x7FFFFFFFU) {
+      RCLCPP_ERROR(logger_, "Arduino telemetry sequence moved backwards; possible board reset");
+      telemetry_fault_ = true;
+      return false;
+    }
+  }
+  telemetry_sequence_ = current_sequence;
+  have_telemetry_sequence_ = true;
   const double radians_per_count = kTwoPi / static_cast<double>(encoder_cpr_);
   hw_position_[kLeft] = static_cast<double>(left_ticks) * radians_per_count;
   hw_position_[kRight] = static_cast<double>(right_ticks) * radians_per_count;

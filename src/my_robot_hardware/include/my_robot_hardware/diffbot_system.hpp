@@ -51,6 +51,9 @@ private:
   int serial_timeout_ms_{500};
   int boot_wait_ms_{2000};
   uint32_t command_sequence_{0};
+  uint32_t telemetry_sequence_{0};
+  bool have_telemetry_sequence_{false};
+  bool telemetry_fault_{false};
   bool active_{false};
   std::chrono::steady_clock::time_point last_state_time_{};
   std::array<double, 2> hw_position_{{0.0, 0.0}};

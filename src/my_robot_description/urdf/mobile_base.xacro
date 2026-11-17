@@ -2,24 +2,30 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <!-- Physical DiffBot dimensions, in metres and kilograms. -->
-    <xacro:property name="base_length" value="0.310" />
-    <xacro:property name="base_width" value="0.260" />
-    <xacro:property name="base_height" value="0.045" />
-    <xacro:property name="ground_to_chassis_top" value="0.089" />
+    <xacro:property name="base_length" value="0.120" />
+    <xacro:property name="base_width" value="0.120" />
+    <xacro:property name="base_height" value="0.010" />
+    <xacro:property name="lower_plate_z" value="0.055" />
+    <xacro:property name="middle_plate_z" value="0.110" />
+    <xacro:property name="upper_plate_z" value="0.160" />
     <xacro:property name="wheel_radius" value="0.034" />
     <xacro:property name="wheel_length" value="0.025" />
-    <xacro:property name="wheel_separation" value="0.305" />
+    <xacro:property name="wheel_separation" value="0.227" />
     <xacro:property name="base_link_height" value="${wheel_radius}" />
-    <xacro:property name="axle_to_chassis_front" value="0.225" />
-    <xacro:property name="chassis_center_x"
-                    value="${axle_to_chassis_front - base_length / 2.0}" />
-    <xacro:property name="chassis_center_z"
-                    value="${ground_to_chassis_top - base_height / 2.0 - base_link_height}" />
-    <xacro:property name="caster_offset_x" value="0.193" />
+    <xacro:property name="axle_to_chassis_front" value="0.110" />
+    <xacro:property name="chassis_center_x" value="0.050" />
+    <xacro:property name="chassis_center_z" value="${lower_plate_z - base_link_height}" />
+    <xacro:property name="caster_offset_x" value="0.095" />
     <xacro:property name="caster_radius" value="0.015" />
-    <xacro:property name="base_mass" value="0.759" />
+    <xacro:property name="base_mass" value="0.085" />
     <xacro:property name="wheel_mass" value="0.025" />
     <xacro:property name="caster_mass" value="0.013" />
+    <xacro:property name="motor_length" value="0.040" />
+    <xacro:property name="motor_width" value="0.050" />
+    <xacro:property name="motor_height" value="0.030" />
+    <xacro:property name="motor_center_y" value="0.035" />
+    <xacro:property name="motor_center_z" value="0.033" />
+    <xacro:property name="motor_assembly_mass" value="0.150" />
 
     <link name="base_footprint" />
 
@@ -41,6 +47,69 @@
                            h="${base_height}"
                            xyz="${chassis_center_x} 0 ${chassis_center_z}" rpy="0 0 0" />
     </link>
+
+    <!-- Two additional plates, with their own collision and inertia. -->
+    <xacro:macro name="upper_chassis_plate" params="prefix height">
+        <link name="${prefix}_plate_link">
+            <visual>
+                <geometry><box size="${base_length} ${base_width} ${base_height}" /></geometry>
+                <material name="blue" />
+            </visual>
+            <collision>
+                <geometry><box size="${base_length} ${base_width} ${base_height}" /></geometry>
+            </collision>
+            <xacro:box_inertia m="${base_mass}" l="${base_length}" w="${base_width}"
+                               h="${base_height}" xyz="0 0 0" rpy="0 0 0" />
+        </link>
+        <joint name="base_${prefix}_plate_joint" type="fixed">
+            <parent link="base_link" />
+            <child link="${prefix}_plate_link" />
+            <origin xyz="${chassis_center_x} 0 ${height - base_link_height}" rpy="0 0 0" />
+        </joint>
+    </xacro:macro>
+
+    <xacro:upper_chassis_plate prefix="middle" height="${middle_plate_z}" />
+    <xacro:upper_chassis_plate prefix="upper" height="${upper_plate_z}" />
+
+    <!-- Equivalent masses represent electronics, batteries, and unmodelled mounts. -->
+    <xacro:macro name="electronics_mass" params="prefix mass height box_height">
+        <link name="${prefix}_electronics_link">
+            <xacro:box_inertia m="${mass}" l="${base_length}" w="${base_width}"
+                               h="${box_height}" xyz="0 0 0" rpy="0 0 0" />
+        </link>
+        <joint name="base_${prefix}_electronics_joint" type="fixed">
+            <parent link="base_link" />
+            <child link="${prefix}_electronics_link" />
+            <origin xyz="${chassis_center_x} 0 ${height - base_link_height}" rpy="0 0 0" />
+        </joint>
+    </xacro:macro>
+
+    <xacro:electronics_mass prefix="lower" mass="0.122" height="0.070" box_height="0.020" />
+    <xacro:electronics_mass prefix="middle" mass="0.310" height="0.135" box_height="0.040" />
+
+    <xacro:macro name="motor_housing" params="prefix side">
+        <link name="${prefix}_motor_housing_link">
+            <visual>
+                <geometry><box size="${motor_length} ${motor_width} ${motor_height}" /></geometry>
+                <material name="grey" />
+            </visual>
+            <collision>
+                <geometry><box size="${motor_length} ${motor_width} ${motor_height}" /></geometry>
+            </collision>
+            <xacro:box_inertia m="${motor_assembly_mass}" l="${motor_length}"
+                               w="${motor_width}" h="${motor_height}"
+                               xyz="0 0 0" rpy="0 0 0" />
+        </link>
+        <joint name="base_${prefix}_motor_housing_joint" type="fixed">
+            <parent link="base_link" />
+            <child link="${prefix}_motor_housing_link" />
+            <origin xyz="0 ${side * motor_center_y} ${motor_center_z - base_link_height}"
+                    rpy="0 0 0" />
+        </joint>
+    </xacro:macro>
+
+    <xacro:motor_housing prefix="left" side="1" />
+    <xacro:motor_housing prefix="right" side="-1" />
 
     <xacro:macro name="wheel_link" params="prefix">
         <link name="${prefix}_wheel_link">

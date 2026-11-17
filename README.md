@@ -1,6 +1,9 @@
 # Custom DiffBot: ROS 2 Navigation
 
-A custom differential-drive robot simulation built with ROS 2 Humble, Gazebo Classic, RViz, and Nav2. The project includes a Xacro robot model, simulated camera and 2D LiDAR, differential-drive odometry, a Gazebo world, and robot-specific Nav2 parameters.
+A custom differential-drive robot with a Gazebo Classic simulation and a
+physical ROS 2 control stack. The physical robot uses a Raspberry Pi 5, Arduino
+Mega, wheel encoders, L298N driver, and RPLIDAR A1. Its autonomous-navigation
+configuration is a supervised starting point and has not been safety validated.
 
 ## Features
 
@@ -10,6 +13,8 @@ A custom differential-drive robot simulation built with ROS 2 Humble, Gazebo Cla
 - Odometry and TF published by the Gazebo drive plugin
 - AMCL localization and Nav2 navigation using a saved map
 - Custom robot footprint and local/global costmap configuration
+- Physical `ros2_control` hardware interface and RPLIDAR driver launch
+- Separate Jazzy physical navigation profile with a collision-monitor command path
 
 ## Packages
 
@@ -17,13 +22,15 @@ A custom differential-drive robot simulation built with ROS 2 Humble, Gazebo Cla
 | --- | --- |
 | `my_robot_description` | Xacro model, sensors, and robot visualization |
 | `my_robot_bringup` | Gazebo world, launch files, RViz configuration, and Nav2 parameters |
+| `my_robot_hardware` | Serial hardware interface for the Arduino Mega |
 
 The TF chain used for navigation is:
 
 map → odom → base_footprint → base_link → lidar_link
 
 
-AMCL provides `map → odom`; Gazebo provides `odom → base_footprint`.
+AMCL provides `map → odom`; Gazebo or the physical drive controller provides
+`odom → base_footprint`, depending on the active launch.
 
 ## Requirements
 
@@ -34,8 +41,7 @@ AMCL provides `map → odom`; Gazebo provides `odom → base_footprint`.
 - `xacro`
 - SLAM Toolbox, if you want to create a new map
 
-## Build the file
-FIrst delete the build install and log folder
+## Build the simulation
 
 From the workspace root:
 
@@ -97,11 +103,17 @@ In the Extras folder, I have saved a template file to manipulate the robot throu
 
 | Parameter | Value |
 | --- | --- |
-| Wheel separation | 0.45 m |
-| Wheel diameter | 0.20 m |
+| Wheel separation | 0.227 m |
+| Wheel diameter | 0.068 m |
 | Odometry update rate | 50 Hz |
 | LiDAR update rate | 10 Hz |
-| LiDAR range | 0.12–3.5 m |
+| Simulated LiDAR range | 0.15–12 m |
 | LiDAR samples | 360 per scan |
 
-The current project is a **simulation prototype**. Its LiDAR, camera, odometry, and motor control use Gazebo plugins; physical hardware drivers and localization without a physical LiDAR are not implemented.
+## Physical Robot
+
+See [physical bringup](docs/PHYSICAL_BRINGUP.md) for wiring, firmware and
+manual checks, and [physical navigation](docs/PHYSICAL_NAVIGATION.md) for the
+Jazzy launch, command routing and required supervised validation. Do not send
+autonomous goals until the physical checks in that guide have passed. The
+simulated camera plugin does not start a driver for a physical camera.

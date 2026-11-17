@@ -18,4 +18,10 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_physical_lidar test/test_physical_lidar.py)
+  ament_add_pytest_test(test_physical_navigation test/test_physical_navigation.py)
+endif()
+
 ament_package()

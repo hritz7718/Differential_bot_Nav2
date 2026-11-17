@@ -26,6 +26,13 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_diffbot_serial test/test_diffbot_serial.cpp)
+  target_link_libraries(test_diffbot_serial ${PROJECT_NAME})
+  ament_target_dependencies(test_diffbot_serial hardware_interface rclcpp rclcpp_lifecycle)
+endif()
+
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_dependencies(hardware_interface pluginlib rclcpp rclcpp_lifecycle)
