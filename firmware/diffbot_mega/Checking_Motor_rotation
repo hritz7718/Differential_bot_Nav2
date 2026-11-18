@@ -1,0 +1,126 @@
+const int rightPWM = 5, rightIN1 = 7, rightIN2 = 8;
+const int leftPWM  = 6, leftIN1  = 9, leftIN2  = 10;
+
+const int pwmValues[] = {100, 150, 200};
+
+void stopMotors() {
+  analogWrite(leftPWM, 0);
+  analogWrite(rightPWM, 0);
+  digitalWrite(leftIN1, LOW);
+  digitalWrite(leftIN2, LOW);
+  digitalWrite(rightIN1, LOW);
+  digitalWrite(rightIN2, LOW);
+}
+
+void setMotor(int pwmPin, int in1, int in2, bool forward, int pwm) {
+  // Your test showed direction 2 is forward.
+  digitalWrite(in1, forward ? LOW : HIGH);
+  digitalWrite(in2, forward ? HIGH : LOW);
+  analogWrite(pwmPin, pwm);
+}
+
+void testTurn(bool turnLeft, int pwm) {
+  stopMotors();
+  delay(1000);
+
+  Serial.print(turnLeft ? "LEFT turn" : "RIGHT turn");
+  Serial.print(" | PWM ");
+  Serial.println(pwm);
+
+  setMotor(leftPWM, leftIN1, leftIN2, !turnLeft, pwm);
+  setMotor(rightPWM, rightIN1, rightIN2, turnLeft, pwm);
+
+  delay(2000);
+  stopMotors();
+  Serial.println("Stopped");
+}
+
+void setup() {
+  pinMode(rightPWM, OUTPUT);
+  pinMode(rightIN1, OUTPUT);
+  pinMode(rightIN2, OUTPUT);
+  pinMode(leftPWM, OUTPUT);
+  pinMode(leftIN1, OUTPUT);
+  pinMode(leftIN2, OUTPUT);
+
+  stopMotors();
+  Serial.begin(115200);
+  Serial.println("Starting in 5 seconds. Keep wheels lifted.");
+  delay(5000);
+}
+
+void loop() {
+  for (int pwm : pwmValues) {
+    testTurn(true, pwm);
+    testTurn(false, pwm);
+  }
+
+  Serial.println("Cycle complete. Repeating in 5 seconds.");
+  stopMotors();
+  delay(5000);
+}
+
+
+FUll Rotation
+
+const int rightPWM = 5, rightIN1 = 7, rightIN2 = 8;
+const int leftPWM  = 6, leftIN1  = 9, leftIN2  = 10;
+
+const int pwmValues[] = {100, 150, 200};
+
+void stopMotors() {
+  analogWrite(leftPWM, 0);
+  analogWrite(rightPWM, 0);
+  digitalWrite(leftIN1, LOW);
+  digitalWrite(leftIN2, LOW);
+  digitalWrite(rightIN1, LOW);
+  digitalWrite(rightIN2, LOW);
+}
+
+void setMotor(int pwmPin, int in1, int in2, bool forward, int pwm) {
+  // Your test showed direction 2 is forward.
+  digitalWrite(in1, forward ? LOW : HIGH);
+  digitalWrite(in2, forward ? HIGH : LOW);
+  analogWrite(pwmPin, pwm);
+}
+
+void testTurn(bool turnLeft, int pwm) {
+  stopMotors();
+  delay(1000);
+
+  Serial.print(turnLeft ? "LEFT turn" : "RIGHT turn");
+  Serial.print(" | PWM ");
+  Serial.println(pwm);
+
+  setMotor(leftPWM, leftIN1, leftIN2, !turnLeft, pwm);
+  setMotor(rightPWM, rightIN1, rightIN2, turnLeft, pwm);
+
+  delay(2000);
+  stopMotors();
+  Serial.println("Stopped");
+}
+
+void setup() {
+  pinMode(rightPWM, OUTPUT);
+  pinMode(rightIN1, OUTPUT);
+  pinMode(rightIN2, OUTPUT);
+  pinMode(leftPWM, OUTPUT);
+  pinMode(leftIN1, OUTPUT);
+  pinMode(leftIN2, OUTPUT);
+
+  stopMotors();
+  Serial.begin(115200);
+  Serial.println("Starting in 5 seconds. Keep wheels lifted.");
+  delay(5000);
+}
+
+void loop() {
+  for (int pwm : pwmValues) {
+    testTurn(true, pwm);
+    testTurn(false, pwm);
+  }
+
+  Serial.println("Cycle complete. Repeating in 5 seconds.");
+  stopMotors();
+  delay(5000);
+}

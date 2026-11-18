@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1
         - /Map1
       Splitter Ratio: 0.5
     Tree Height: 737
@@ -89,6 +90,11 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        left_motor_housing_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_wheel_link:
           Alpha: 1
           Show Axes: false
@@ -99,7 +105,30 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        lower_electronics_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        middle_electronics_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        middle_plate_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_motor_housing_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         right_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        upper_plate_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -127,37 +156,58 @@ Visualization Manager:
           Value: true
         caster_wheel_link:
           Value: true
+        left_motor_housing_link:
+          Value: true
         left_wheel_link:
           Value: true
         lidar_link:
           Value: true
-        map:
+        lower_electronics_link:
+          Value: true
+        middle_electronics_link:
+          Value: true
+        middle_plate_link:
           Value: true
         odom:
           Value: true
+        right_motor_housing_link:
+          Value: true
         right_wheel_link:
           Value: true
-      Marker Scale: 1
+        upper_plate_link:
+          Value: true
+      Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        map:
-          odom:
-            base_footprint:
-              base_link:
-                camera_link:
-                  camera_link_optical:
-                    {}
-                caster_wheel_link:
+        odom:
+          base_footprint:
+            base_link:
+              camera_link:
+                camera_link_optical:
                   {}
-                left_wheel_link:
-                  {}
-                lidar_link:
-                  {}
-                right_wheel_link:
-                  {}
+              caster_wheel_link:
+                {}
+              left_motor_housing_link:
+                {}
+              left_wheel_link:
+                {}
+              lidar_link:
+                {}
+              lower_electronics_link:
+                {}
+              middle_electronics_link:
+                {}
+              middle_plate_link:
+                {}
+              right_motor_housing_link:
+                {}
+              right_wheel_link:
+                {}
+              upper_plate_link:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 0.699999988079071
@@ -181,7 +231,7 @@ Visualization Manager:
         Value: /map_updates
       Use Timestamp: false
       Value: true
-    - Alpha: 0.3
+    - Alpha: 0.30000001192092896
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
       Draw Behind: false
@@ -224,12 +274,25 @@ Visualization Manager:
       Use Timestamp: false
       Value: true
     - Alpha: 1
+      Buffer Length: 1
       Class: rviz_default_plugins/Path
       Color: 255; 0; 0
       Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
       Line Style: Lines
-      Line Width: 0.03
+      Line Width: 0.029999999329447746
       Name: Global Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -239,12 +302,25 @@ Visualization Manager:
         Value: /plan
       Value: true
     - Alpha: 1
+      Buffer Length: 1
       Class: rviz_default_plugins/Path
       Color: 0; 100; 255
       Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
       Line Style: Lines
-      Line Width: 0.03
+      Line Width: 0.029999999329447746
       Name: Local Plan
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -256,7 +332,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: map
+    Fixed Frame: base_footprint
     Frame Rate: 30
   Name: root
   Tools:
@@ -299,25 +375,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 21.672733306884766
+      Distance: 1.1834237575531006
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.8571159839630127
-        Y: 1.3929965496063232
-        Z: -0.19316086173057556
+        X: 0.5690953135490417
+        Y: 0.06415426731109619
+        Z: 0.22751812636852264
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 0.3197978138923645
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.2835869789123535
+      Yaw: 4.4867777824401855
     Saved: ~
 Window Geometry:
   Displays:

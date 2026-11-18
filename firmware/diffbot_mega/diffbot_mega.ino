@@ -19,7 +19,7 @@ constexpr uint8_t kEstopPin = 18;
 
 // Change these signs only after the raised-wheel polarity test.
 constexpr int8_t kRightMotorSign = -1;
-constexpr int8_t kLeftMotorSign = 1;
+constexpr int8_t kLeftMotorSign = -1;
 constexpr int8_t kRightEncoderSign = 1;
 constexpr int8_t kLeftEncoderSign = -1;
 constexpr bool kUseEstop = false;
@@ -27,7 +27,7 @@ constexpr bool kUseEstop = false;
 constexpr long kEncoderCountsPerRevolution = 450;
 constexpr float kRadiansPerCount = 2.0F * PI / kEncoderCountsPerRevolution;
 constexpr float kMaximumWheelSpeed = 6.0F;
-constexpr int kMaximumPwm = 130;  // Conservative initial limit for the L293D.
+constexpr int kMaximumPwm = 200;  // Conservative initial limit for the L293D.
 constexpr unsigned long kControlPeriodUs = 10000;  // 100 Hz.
 constexpr unsigned long kTelemetryPeriodMs = 20;   // 50 Hz.
 constexpr unsigned long kCommandTimeoutMs = 250;
