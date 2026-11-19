@@ -81,7 +81,7 @@ This launch starts **both physical bringup and Nav2**. Don’t run a second phys
 
 ```bash
 ros2 launch my_robot_bringup physical_navigation.launch.py \
-  map:=$HOME/my_maps/physical_map.yaml \
+  map:=$HOME/maps/map_1794605954.yaml \
   serial_port:=$ARDUINO lidar_serial_port:=$LIDAR \
   use_rviz:=false
 ```

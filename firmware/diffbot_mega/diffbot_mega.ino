@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// ADIY L293D header: A1 A2 EN_A VCC GND EN_B B2 B1.
+// ADIY L298N header: A1 A2 EN_A VCC GND EN_B B2 B1.
 constexpr uint8_t kRightPwmPin = 5;   // EN_A, right motor on MA
 constexpr uint8_t kRightIn1Pin = 7;   // A1
 constexpr uint8_t kRightIn2Pin = 8;   // A2
@@ -27,7 +27,8 @@ constexpr bool kUseEstop = false;
 constexpr long kEncoderCountsPerRevolution = 450;
 constexpr float kRadiansPerCount = 2.0F * PI / kEncoderCountsPerRevolution;
 constexpr float kMaximumWheelSpeed = 6.0F;
-constexpr int kMaximumPwm = 200;  // Conservative initial limit for the L293D.
+constexpr int kMaximumPwm = 150;  // Conservative initial limit for the L298N.
+constexpr int kMinimumPwm = 100;
 constexpr unsigned long kControlPeriodUs = 10000;  // 100 Hz.
 constexpr unsigned long kTelemetryPeriodMs = 20;   // 50 Hz.
 constexpr unsigned long kCommandTimeoutMs = 250;
@@ -199,10 +200,20 @@ void updateControl(unsigned long now_us)
     right_target_rad_s = 0.0F;
   }
 
-  const int left_pwm = pidOutput(
-    left_target_rad_s, left_measured_rad_s, left_integral, dt);
-  const int right_pwm = pidOutput(
-    right_target_rad_s, right_measured_rad_s, right_integral, dt);
+  int left_pwm = pidOutput(
+      left_target_rad_s, left_measured_rad_s, left_integral, dt);
+
+  int right_pwm = pidOutput(
+      right_target_rad_s, right_measured_rad_s, right_integral, dt);
+
+  // Minimum PWM to overcome motor friction
+  if (left_pwm != 0 && abs(left_pwm) < kMinimumPwm) {
+      left_pwm = left_pwm > 0 ? kMinimumPwm : -kMinimumPwm;
+  }
+
+  if (right_pwm != 0 && abs(right_pwm) < kMinimumPwm) {
+      right_pwm = right_pwm > 0 ? kMinimumPwm : -kMinimumPwm;
+  }
   setMotor(kLeftPwmPin, kLeftIn1Pin, kLeftIn2Pin, kLeftMotorSign, left_pwm);
   setMotor(kRightPwmPin, kRightIn1Pin, kRightIn2Pin, kRightMotorSign, right_pwm);
 }
