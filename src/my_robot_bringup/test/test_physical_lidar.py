@@ -57,7 +57,7 @@ class PhysicalLidarTest(unittest.TestCase):
             self.assertEqual(joints[0].get('type'), 'fixed')
             self.assertEqual(joints[0].find('parent').get('link'), 'base_link')
             self.assertEqual(
-                robot.find("gazebo[@reference='lidar_link']/sensor/plugin/frame_name").text,
+                robot.find("gazebo[@reference='lidar_link']/sensor/gz_frame_id").text,
                 'lidar_link')
 
 

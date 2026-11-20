@@ -7,9 +7,10 @@ import xml.etree.ElementTree as ET
 XACRO = Path(__file__).resolve().parents[1] / 'urdf' / 'my_robot.urdf.xacro'
 
 
-def robot_description(hardware=False):
+def robot_description(hardware=False, simulation=False):
     xml = subprocess.check_output(
-        ['xacro', str(XACRO), f'use_ros2_control:={str(hardware).lower()}'], text=True)
+        ['xacro', str(XACRO), f'use_ros2_control:={str(hardware).lower()}',
+         f'use_gz:={str(simulation).lower()}'], text=True)
     return ET.fromstring(xml)
 
 
@@ -80,10 +81,12 @@ def test_total_mass_and_centre_of_gravity():
 
 
 def test_simulated_lidar_and_drive_remain_available():
-    robot = robot_description()
-    assert robot.find('./ros2_control') is None
-    assert robot.find("gazebo[@reference='lidar_link']/sensor/plugin/frame_name").text == 'lidar_link'
-    plugin = robot.find("gazebo/plugin[@name='diff_drive_controller']")
-    assert plugin is not None
-    assert abs(float(plugin.find('wheel_separation').text) - 0.227) < 1e-9
-    assert abs(float(plugin.find('wheel_diameter').text) - 0.068) < 1e-9
+    robot = robot_description(simulation=True)
+    assert robot.find('./ros2_control/hardware/plugin').text == 'gz_ros2_control/GazeboSimSystem'
+    assert robot.find("gazebo[@reference='lidar_link']/sensor").get('type') == 'gpu_lidar'
+    assert robot.find("gazebo[@reference='lidar_link']/sensor/gz_frame_id").text == 'lidar_link'
+    assert robot.find("gazebo[@reference='camera_link']/sensor/gz_frame_id").text == 'camera_link_optical'
+    assert len(robot.findall("gazebo/plugin[@name='gz_ros2_control::GazeboSimROS2ControlPlugin']")) == 1
+    assert robot.find("gazebo/plugin[@name='diff_drive_controller']") is None
+    assert {j.get('name') for j in robot.findall('./ros2_control/joint')} == {
+        'base_left_wheel_joint', 'base_right_wheel_joint'}

@@ -1,6 +1,6 @@
 # Custom DiffBot: ROS 2 Navigation
 
-A custom differential-drive robot with a Gazebo Classic simulation and a
+A custom differential-drive robot with a Gazebo Harmonic simulation and a
 physical ROS 2 control stack. The physical robot uses a Raspberry Pi 5, Arduino
 Mega, wheel encoders, L298N driver, and RPLIDAR A1. Its autonomous-navigation
 configuration is a supervised starting point and has not been safety validated.
@@ -10,7 +10,7 @@ configuration is a supervised starting point and has not been safety validated.
 - Two-wheel differential drive with a caster wheel
 - Simulated 360° LiDAR publishing `/scan`
 - Simulated camera
-- Odometry and TF published by the Gazebo drive plugin
+- Odometry and TF published by `diff_drive_controller`
 - AMCL localization and Nav2 navigation using a saved map
 - Custom robot footprint and local/global costmap configuration
 - Physical `ros2_control` hardware interface and RPLIDAR driver launch
@@ -29,25 +29,33 @@ The TF chain used for navigation is:
 map → odom → base_footprint → base_link → lidar_link
 
 
-AMCL provides `map → odom`; Gazebo or the physical drive controller provides
-`odom → base_footprint`, depending on the active launch.
+AMCL or SLAM Toolbox provides `map → odom`; the drive controller provides
+`odom → base_footprint` in simulation and on the physical robot.
 
 ## Requirements
 
-- ROS 2 Humble
-- Gazebo Classic and `gazebo_ros`
-- Nav2
-- RViz 2
-- `xacro`
-- SLAM Toolbox, if you want to create a new map
+The simulation targets Ubuntu 24.04, ROS 2 Jazzy and Gazebo Harmonic. Install
+ROS 2 Jazzy, then install the simulation and navigation packages:
+
+```bash
+sudo apt update
+sudo apt install python3-colcon-common-extensions python3-rosdep \
+  ros-jazzy-ros-gz ros-jazzy-gz-ros2-control \
+  ros-jazzy-ros2-control ros-jazzy-ros2-controllers \
+  ros-jazzy-xacro ros-jazzy-robot-state-publisher ros-jazzy-rviz2 \
+  ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-slam-toolbox
+```
+
+The physical RPLIDAR driver is a separate dependency. The `src/sllidar_ros2`
+entry in this checkout is an empty gitlink without a configured `.gitmodules`;
+obtain the driver separately if physical LiDAR bringup is required. See the
+physical bringup guide for hardware requirements.
 
 ## Build the simulation
 
-From the workspace root:
-
 ```bash
-source /opt/ros/humble/setup.bash
-cd ~/ros2_Nav2_diffbot
+source /opt/ros/jazzy/setup.bash
+cd ~/robotics/Differential_bot_Nav2
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -55,21 +63,47 @@ source install/setup.bash
 ## Run the simulation
 
 ```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/robotics/Differential_bot_Nav2
+source install/setup.bash
 ros2 launch my_robot_bringup my_robot_gazebo.launch.xml
 ```
 
-This starts Gazebo, spawns the robot, publishes its description, and opens RViz. To run Gazebo without its graphical client:
+The launch starts Gazebo with the existing world, spawns DiffBot, activates the
+joint state and differential drive controllers, and starts RViz. To run without
+both graphical applications:
 
 ```bash
-ros2 launch my_robot_bringup my_robot_gazebo.launch.xml gui:=false
+ros2 launch my_robot_bringup my_robot_gazebo.launch.xml gui:=false use_rviz:=false
 ```
+
+`gui` controls Gazebo's client; `use_rviz` independently controls RViz. The
+headless server still needs an Ogre 2 rendering backend for LiDAR and camera.
+The simulation uses `/clock`, `/cmd_vel` (`geometry_msgs/msg/Twist`), `/odom`,
+`/joint_states`, `/scan`, `/camera/image_raw`, and `/camera/camera_info`.
+The existing command adapter stamps `/cmd_vel` for Jazzy's controller. For a
+brief manual motion check in another sourced terminal:
+
+```bash
+ros2 topic pub --rate 10 /cmd_vel geometry_msgs/msg/Twist \
+  '{linear: {x: 0.1}, angular: {z: 0.0}}'
+```
+
+Stop publishing with Ctrl-C; the controller stops after its command timeout.
+The world references an unavailable Classic bowl mesh, so the bowl visual uses
+its existing cylindrical collision dimensions instead.
+
+Run only one simulation on a ROS domain and Gazebo Transport partition at a
+time. For concurrent simulations, set a distinct `ROS_DOMAIN_ID` and
+`GZ_PARTITION` in every terminal used for each simulation, including its Nav2
+and SLAM terminals.
 
 ## Create a map
 
 With the simulation running, start SLAM Toolbox in another terminal:
 
 ```bash
-source ~/ros2_Nav2_diffbot/install/setup.bash
+source ~/robotics/Differential_bot_Nav2/install/setup.bash
 ros2 launch slam_toolbox online_async_launch.py use_sim_time:=true
 ```
 
@@ -88,7 +122,7 @@ This produces `my_world.yaml` and a map image. Stop SLAM Toolbox before starting
 Keep the simulation running and launch Nav2 in a separate terminal:
 
 ```bash
-source ~/ros2_Nav2_diffbot/install/setup.bash
+source ~/robotics/Differential_bot_Nav2/install/setup.bash
 ros2 launch my_robot_bringup navigation.launch.py \
   map:=$HOME/my_maps/my_world.yaml
 ```

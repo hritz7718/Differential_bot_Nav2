@@ -296,7 +296,7 @@ waypoint_follower:
 # Initial zone: validate scan coverage and stopping distance before floor navigation.
 collision_monitor:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     base_frame_id: "base_footprint"
     odom_frame_id: "odom"
 

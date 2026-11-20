@@ -45,11 +45,16 @@
         <material>Gazebo/Red</material>
         <sensor name="camera_sensor" type="camera">
             <pose>0 0 0 0 0 0</pose>
-            <visualize>true</visualize>
+            <topic>/camera/image_raw</topic>
+            <gz_frame_id>camera_link_optical</gz_frame_id>
+            <visualize>false</visualize>
             <update_rate>10.0</update_rate>
-            <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
-                <frame_name>camera_link_optical</frame_name>
-            </plugin>
+            <camera>
+                <camera_info_topic>/camera/camera_info</camera_info_topic>
+                <horizontal_fov>1.047</horizontal_fov>
+                <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+                <clip><near>0.05</near><far>50</far></clip>
+            </camera>
         </sensor>
     </gazebo>
 

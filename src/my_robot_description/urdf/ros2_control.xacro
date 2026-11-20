@@ -1,16 +1,21 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-    <xacro:macro name="diffbot_ros2_control" params="enabled serial_port baud_rate">
-        <xacro:if value="${enabled}">
+    <xacro:macro name="diffbot_ros2_control" params="enabled use_gz serial_port baud_rate">
+        <xacro:if value="${str(enabled).lower() in ['true', '1'] or str(use_gz).lower() in ['true', '1']}">
             <ros2_control name="DiffBotSystem" type="system">
                 <hardware>
-                    <plugin>my_robot_hardware/DiffBotSystem</plugin>
-                    <param name="serial_port">${serial_port}</param>
-                    <param name="baud_rate">${baud_rate}</param>
-                    <param name="encoder_counts_per_revolution">450</param>
-                    <param name="serial_timeout_ms">500</param>
-                    <param name="boot_wait_ms">2000</param>
+                    <xacro:if value="${use_gz}">
+                        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                    </xacro:if>
+                    <xacro:unless value="${use_gz}">
+                        <plugin>my_robot_hardware/DiffBotSystem</plugin>
+                        <param name="serial_port">${serial_port}</param>
+                        <param name="baud_rate">${baud_rate}</param>
+                        <param name="encoder_counts_per_revolution">450</param>
+                        <param name="serial_timeout_ms">500</param>
+                        <param name="boot_wait_ms">2000</param>
+                    </xacro:unless>
                 </hardware>
 
                 <joint name="base_left_wheel_joint">
@@ -25,6 +30,13 @@
                     <state_interface name="velocity" />
                 </joint>
             </ros2_control>
+        </xacro:if>
+        <xacro:if value="${use_gz}">
+            <gazebo>
+                <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <parameters>$(find my_robot_bringup)/config/controllers.yaml</parameters>
+                </plugin>
+            </gazebo>
         </xacro:if>
     </xacro:macro>
 
